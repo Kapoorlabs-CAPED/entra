@@ -25,9 +25,9 @@ def main():
     print("=" * 70)
 
     D = 2
-    num_points_per_dim = 50
-    delta_x = 0.02
-    sigma = 0.7 * delta_x
+    num_points_per_dim = 20  # 10 points per dimension
+    delta_x = 1  # Grid spacing in both x and y
+    sigma = 5
 
     print("\nParameters:")
     print(f"  D (dimension)           = {D}")
@@ -69,15 +69,14 @@ def main():
     print("-" * 70)
 
     # Place centers in a pattern
-    centers = np.array(
-        [
-            [0.0, 0.0],  # Center
-            [0.5, 0.0],  # Right
-            [-0.5, 0.0],  # Left
-            [0.0, 0.5],  # Top
-            [0.0, -0.5],  # Bottom
-        ]
-    )
+    center_list = []
+    for i in range(int(eval_points[:, 0].max())):
+        center_list.append([i, 0.0])
+        center_list.append([-i, 0.0])
+        center_list.append([0.0, i])
+        center_list.append([0.0, -i])
+    centers = np.asarray(center_list)
+
     print(f"  Centers shape: {centers.shape}")
     for i, c in enumerate(centers):
         print(f"    Center {i}: ({c[0]:+.2f}, {c[1]:+.2f})")
@@ -118,7 +117,7 @@ def main():
     entropy = shannon_entropy_gaussian(cov)
     print(f"  {0:>5}  {det_val:>14.6e}  {entropy:>12.6f}  {lam:>10.2e}")
 
-    max_iterations = 50
+    max_iterations = 1000
     tolerance = 1e-8
 
     history = {
