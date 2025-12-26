@@ -3,10 +3,28 @@ try:
 except ImportError:
     __version__ = "unknown"
 
-
-from .distributions import (
-    generate_k_distributions,
-    plot_distributions_histogram,
+from .scalar_basis import ScalarBasis
+from .tensor_basis import TensorBasis
+from .utils import (
+    divergence,
+    divergence_components,
+    gradient_component,
+    is_divergence_free,
+    tensor_basis_column_divergence,
+    verify_divergence_free_symmetric,
+    verify_tensor_basis_divergence_free,
 )
+from .vector_sampler import VectorSampler
 
-__all__ = ["generate_k_distributions", "plot_distributions_histogram"]
+__all__ = [
+    "VectorSampler",
+    "ScalarBasis",
+    "TensorBasis",
+    "gradient_component",
+    "divergence_components",
+    "divergence",
+    "is_divergence_free",
+    "tensor_basis_column_divergence",
+    "verify_tensor_basis_divergence_free",
+    "verify_divergence_free_symmetric",
+]
