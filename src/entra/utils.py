@@ -534,3 +534,29 @@ def verify_divergence_free_symmetric(
     }
 
     return is_divergence_free, stats
+
+
+def shannon_entropy_gaussian(cov: np.ndarray) -> float:
+    """
+    Compute Shannon entropy assuming Gaussian distribution.
+
+    For a D-dimensional Gaussian with covariance matrix Cov:
+    H = (D/2) * log(2*pi*e) + (1/2) * log(det(Cov))
+      = (D/2) * (1 + log(2*pi)) + (1/2) * log(det(Cov))
+
+    Parameters
+    ----------
+    cov : np.ndarray
+        Covariance matrix of shape (D, D).
+
+    Returns
+    -------
+    float
+        Shannon entropy in nats.
+    """
+    D = cov.shape[0]
+    sign, logdet = np.linalg.slogdet(cov)
+    if sign <= 0:
+        return np.inf
+    entropy = 0.5 * D * (1 + np.log(2 * np.pi)) + 0.5 * logdet
+    return entropy
