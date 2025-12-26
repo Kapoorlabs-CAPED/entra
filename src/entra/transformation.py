@@ -107,13 +107,9 @@ class Transformation:
         displacement = np.zeros((J, self.D), dtype=np.float64)
 
         for center_idx in range(self.L):
-            # Phi[:, center_idx, :, :] has shape (J, D, D)
-            # coefficients[center_idx, :] has shape (D,)
-            # Matrix-vector product for each point: (J, D, D) @ (D,) -> (J, D)
-            displacement += np.einsum(
-                "jde,e->jd",
-                Phi[:, center_idx, :, :],
-                self.coefficients[center_idx, :],
+            # (J, D, D) @ (D,) -> (J, D)
+            displacement += (
+                Phi[:, center_idx, :, :] @ self.coefficients[center_idx, :]
             )
 
         y_transformed = y + displacement
@@ -150,10 +146,9 @@ class Transformation:
 
         displacement = np.zeros((J, self.D), dtype=np.float64)
         for center_idx in range(self.L):
-            displacement += np.einsum(
-                "jde,e->jd",
-                Phi[:, center_idx, :, :],
-                self.coefficients[center_idx, :],
+            # (J, D, D) @ (D,) -> (J, D)
+            displacement += (
+                Phi[:, center_idx, :, :] @ self.coefficients[center_idx, :]
             )
 
         if single_point:
@@ -210,6 +205,38 @@ class Transformation:
     def num_parameters(self) -> int:
         """Total number of parameters (L * D)."""
         return self.L * self.D
+
+    def get_updated_basis(self, y: np.ndarray) -> np.ndarray:
+        """
+        Get the updated basis by multiplying coefficients with tensor basis rows.
+
+        new_basis[:, l, :] = Φ[:, l, :, :] @ coefficients[l, :]
+
+        Parameters
+        ----------
+        y : np.ndarray
+            Points at which to evaluate. Shape (J, D).
+
+        Returns
+        -------
+        np.ndarray
+            Updated basis of shape (J, L, D).
+        """
+        y = np.asarray(y, dtype=np.float64)
+        if y.ndim == 1:
+            y = y.reshape(1, -1)
+
+        J = y.shape[0]
+        Phi = self.tensor_basis.evaluate(y)  # (J, L, D, D)
+
+        updated_basis = np.zeros((J, self.L, self.D), dtype=np.float64)
+        for li in range(self.L):
+            # (J, D, D) @ (D,) -> (J, D)
+            updated_basis[:, li, :] = (
+                Phi[:, li, :, :] @ self.coefficients[li, :]
+            )
+
+        return updated_basis
 
     def __repr__(self) -> str:
         return (

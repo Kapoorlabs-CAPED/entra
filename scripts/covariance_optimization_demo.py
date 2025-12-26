@@ -16,6 +16,8 @@ from entra import (
     Transformation,
     VectorSampler,
     shannon_entropy_gaussian,
+    shannon_entropy_knn,
+    shannon_entropy_uniform,
 )
 
 
@@ -55,13 +57,18 @@ def main():
     # Initial covariance
     initial_cov = np.cov(eval_points, rowvar=False)
     initial_det = np.linalg.det(initial_cov)
-    initial_entropy = shannon_entropy_gaussian(initial_cov)
+    initial_entropy_uniform = shannon_entropy_uniform(eval_points)
+    initial_entropy_knn = shannon_entropy_knn(eval_points)
 
     print("\n  Initial covariance matrix:")
     print(f"    [[{initial_cov[0, 0]:.6f}, {initial_cov[0, 1]:.6f}],")
     print(f"     [{initial_cov[1, 0]:.6f}, {initial_cov[1, 1]:.6f}]]")
     print(f"  Initial determinant: {initial_det:.6e}")
-    print(f"  Initial entropy:     {initial_entropy:.6f} nats")
+    print(
+        f"  Volume: {num_points_per_dim * delta_x}^{D} = {(num_points_per_dim * delta_x)**D}"
+    )
+    print(f"  Entropy (uniform): {initial_entropy_uniform:.6f} nats")
+    print(f"  Entropy (k-NN):    {initial_entropy_knn:.6f} nats")
 
     # Step 2: Create 5 centers
     print("\n" + "-" * 70)
@@ -186,22 +193,28 @@ def main():
 
     final_cov = minimizer.compute_covariance()
     final_det = np.linalg.det(final_cov)
-    final_entropy = shannon_entropy_gaussian(final_cov)
+    final_entropy_gaussian = shannon_entropy_gaussian(final_cov)
+    final_points = transformation.transform(eval_points)
+    final_entropy_knn = shannon_entropy_knn(final_points)
 
     print("\n  Final covariance matrix:")
     print(f"    [[{final_cov[0, 0]:.6f}, {final_cov[0, 1]:.6f}],")
     print(f"     [{final_cov[1, 0]:.6f}, {final_cov[1, 1]:.6f}]]")
 
     print("\n  Comparison:")
-    print(f"    {'':20} {'Initial':>14} {'Final':>14} {'Reduction':>12}")
+    print(f"    {'':20} {'Initial':>14} {'Final':>14} {'Change':>12}")
     print(f"    {'-' * 60}")
     print(
         f"    {'Determinant':20} {initial_det:>14.6e} {final_det:>14.6e} "
         f"{initial_det / final_det:>12.2f}x"
     )
+    print(f"    {'Entropy (uniform)':20} {initial_entropy_uniform:>14.6f}")
     print(
-        f"    {'Entropy (nats)':20} {initial_entropy:>14.6f} {final_entropy:>14.6f} "
-        f"{initial_entropy - final_entropy:>12.6f}"
+        f"    {'Entropy (gaussian)':20} {'':>14} {final_entropy_gaussian:>14.6f}"
+    )
+    print(
+        f"    {'Entropy (k-NN)':20} {initial_entropy_knn:>14.6f} {final_entropy_knn:>14.6f} "
+        f"{initial_entropy_knn - final_entropy_knn:>12.6f}"
     )
 
     print(f"\n  Optimized coefficients (L={centers.shape}, D={D}):")

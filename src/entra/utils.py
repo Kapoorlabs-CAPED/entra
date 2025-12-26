@@ -560,3 +560,91 @@ def shannon_entropy_gaussian(cov: np.ndarray) -> float:
         return np.inf
     entropy = 0.5 * D * (1 + np.log(2 * np.pi)) + 0.5 * logdet
     return entropy
+
+
+def shannon_entropy_knn(points: np.ndarray, k: int = 3) -> float:
+    """
+    Estimate Shannon entropy using k-nearest neighbor method (Kozachenko-Leonenko).
+
+    This is a non-parametric estimator that doesn't assume any distribution shape.
+    For a volume-preserving transformation, this estimate should remain constant.
+
+    Parameters
+    ----------
+    points : np.ndarray
+        Points of shape (J, D).
+    k : int
+        Number of nearest neighbors to use. Default is 3.
+
+    Returns
+    -------
+    float
+        Estimated Shannon entropy in nats.
+    """
+    from scipy.spatial import cKDTree
+    from scipy.special import digamma
+
+    points = np.asarray(points)
+    J, D = points.shape
+
+    # Build KD-tree and find k-th nearest neighbor distances
+    tree = cKDTree(points)
+    # Query k+1 neighbors (first one is the point itself with distance 0)
+    distances, _ = tree.query(points, k=k + 1)
+    # Take the k-th neighbor distance (index k, since index 0 is self)
+    rho_k = distances[:, k]
+
+    # Kozachenko-Leonenko estimator
+    # H = D * mean(log(rho_k)) + log(V_D) + log(J-1) - digamma(k)
+    # where V_D is volume of unit ball in D dimensions
+    # V_D = pi^(D/2) / Gamma(D/2 + 1)
+    log_v_d = (D / 2) * np.log(np.pi) - np.math.lgamma(D / 2 + 1)
+
+    # Avoid log(0) for duplicate points
+    rho_k = np.maximum(rho_k, 1e-10)
+
+    entropy = (
+        D * np.mean(np.log(2 * rho_k)) + log_v_d + digamma(J) - digamma(k)
+    )
+
+    return entropy
+
+
+def shannon_entropy_uniform(points: np.ndarray) -> float:
+    """
+    Compute Shannon entropy assuming uniform distribution.
+
+    For a D-dimensional uniform distribution over a hypercube with volume V:
+    H = log(V)
+
+    The volume is computed from the bounding box of the points. If delta_x is
+    provided, it is added to the extent in each dimension to account for the
+    cell size (since points at the boundary represent the center of their cells).
+
+    Parameters
+    ----------
+    points : np.ndarray
+        Points of shape (J, D).
+    delta_x : float, optional
+        Grid spacing. If provided, volume = prod((extent + delta_x) for each dim).
+        This accounts for the fact that a 20x20 grid with delta_x=1 spans
+        -9.5 to 9.5 (extent=19) but represents a volume of 20x20.
+
+    Returns
+    -------
+    float
+        Shannon entropy in nats.
+    """
+    points = np.asarray(points)
+    D = points.shape[1]
+
+    # Compute volume from bounding box
+    volume = 1.0
+    for d in range(D):
+        extent = points[:, d].max() - points[:, d].min()
+
+        volume *= extent
+
+    if volume <= 0:
+        return -np.inf
+    return np.log(volume)

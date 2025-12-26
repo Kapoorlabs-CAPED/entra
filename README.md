@@ -6,13 +6,41 @@
 [![tests](https://github.com/Kapoorlabs-CAPED/entra/workflows/tests/badge.svg)](https://github.com/Kapoorlabs-CAPED/entra/actions)
 [![codecov](https://codecov.io/gh/Kapoorlabs-CAPED/entra/branch/main/graph/badge.svg)](https://codecov.io/gh/Kapoorlabs-CAPED/entra)
 
-Divergence-free tensor basis functions for incompressible vector field representation.
+Divergence-free tensor basis functions for incompressible vector field representation and entropy-conserving transformations.
 
 ----------------------------------
 
 ## Overview
 
 This package implements a method for constructing **divergence-free vector basis functions** by applying a differential operator to Gaussian radial basis functions (RBFs). The resulting basis functions are ideal for representing incompressible vector fields and entropy-conserving transformations.
+
+## Theoretical Foundation
+
+### Maximum Entropy Principle
+
+A fundamental theorem in information theory states that **among all distributions with a given covariance matrix, the Gaussian distribution has maximum entropy**. This package exploits a corollary of this theorem: by minimizing the covariance determinant of a point distribution using volume-preserving transformations, we can transform any distribution towards a Gaussian.
+
+### Why Divergence-Free?
+
+Divergence-free vector fields are **volume-preserving** (incompressible). When we use divergence-free basis functions to define a transformation:
+
+- The Jacobian determinant equals 1 everywhere
+- Total volume is conserved
+- **Entropy is conserved** under the transformation
+
+This allows us to iteratively minimize the covariance determinant while preserving the fundamental entropy of the distribution, effectively reshaping any distribution into a Gaussian form.
+
+### The Divergence-Free Operator
+
+The construction of divergence-free vector fields from scalar RBFs uses the differential operator discovered by Lowitzsch [1]:
+
+**Ô = -I∇² + ∇∇ᵀ**
+
+When applied to a scalar function φ(x), this operator produces a D×D matrix where each column is a divergence-free vector field.
+
+## References
+
+[1] S. Lowitzsch, *Approximation and Interpolation Employing Divergence-Free Radial Basis Functions With Applications*, PhD thesis, Department of Mathematics, Texas A&M University, 2002.
 
 ## Algorithm Flowchart
 
