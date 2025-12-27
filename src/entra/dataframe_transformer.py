@@ -11,7 +11,8 @@ import pandas as pd
 from .covariance_minimizer import CovarianceMinimizer
 from .tensor_basis import TensorBasis
 from .transformation import Transformation
-from .utils import shannon_entropy_gaussian, shannon_entropy_knn
+from .utils import (shannon_entropy_gaussian, shannon_entropy_knn,
+                    shannon_entropy_uniform)
 
 
 class DataFrameTransformer:
@@ -28,13 +29,10 @@ class DataFrameTransformer:
     ----------
     sigma : float, optional
         Width parameter for Gaussian RBF basis functions. Default is 5.0.
-    center_stride : int, optional
-        Use every nth point as a basis center. Default is 1 (all points).
-        Increase for large datasets to reduce computation.
     max_iterations : int, optional
-        Maximum iterations for optimization. Default is 100.
+        Maximum iterations for optimization. Default is 1000.
     tolerance : float, optional
-        Convergence tolerance. Default is 1e-8.
+        Convergence tolerance. Default is 1e-18.
     verbose : bool, optional
         Print progress during optimization. Default is True.
 
@@ -57,13 +55,11 @@ class DataFrameTransformer:
     def __init__(
         self,
         sigma: float = 5.0,
-        center_stride: int = 1,
-        max_iterations: int = 100,
-        tolerance: float = 1e-8,
+        max_iterations: int = 1000,
+        tolerance: float = 1e-18,
         verbose: bool = True,
     ):
         self.sigma = sigma
-        self.center_stride = center_stride
         self.max_iterations = max_iterations
         self.tolerance = tolerance
         self.verbose = verbose
@@ -73,6 +69,30 @@ class DataFrameTransformer:
         self.basis_ = None
         self.columns_ = None
         self.history_ = None
+        self.centers_ = None
+
+    def _create_centers(self, points):
+        """
+        Create centers along the coordinate axes.
+
+        Same pattern as covariance_optimization.ipynb.
+        """
+        D = points.shape[1]
+        max_coord = int(np.max(np.abs(points)))
+
+        center_list = []
+        for i in range(max_coord):
+            for d in range(D):
+                # Positive direction
+                c = [0.0] * D
+                c[d] = float(i)
+                center_list.append(c)
+                # Negative direction
+                c = [0.0] * D
+                c[d] = float(-i)
+                center_list.append(c)
+
+        return np.asarray(center_list)
 
     def fit(self, df, columns: list[str]):
         """
@@ -97,20 +117,17 @@ class DataFrameTransformer:
         points = df[columns].values.astype(np.float64)
         J, D = points.shape
 
+        # Create centers along axes
+        self.centers_ = self._create_centers(points)
+        L = self.centers_.shape[0]
+
         if self.verbose:
             print(f"Fitting transformer: {J} points, {D} dimensions")
             print(f"  sigma = {self.sigma}")
-            print(f"  center_stride = {self.center_stride}")
-
-        # Select centers (every nth point)
-        centers = points[:: self.center_stride].copy()
-        L = centers.shape[0]
-
-        if self.verbose:
             print(f"  L = {L} basis centers")
 
         # Create basis and transformation
-        self.basis_ = TensorBasis(centers, sigma=self.sigma)
+        self.basis_ = TensorBasis(self.centers_, sigma=self.sigma)
         self.transformation_ = Transformation(self.basis_)
 
         # Create minimizer
@@ -183,7 +200,7 @@ class DataFrameTransformer:
             if obj_new < obj_old:
                 x = x_new
                 lam *= 0.1
-                improvement = obj_old - obj_new
+                improvement = abs(obj_old - obj_new)
 
                 cov = minimizer.compute_covariance(x)
                 det_val = np.linalg.det(cov)
@@ -194,7 +211,7 @@ class DataFrameTransformer:
                 self.history_["gaussian_entropy"].append(gaussian_entropy)
                 self.history_["lambda"].append(lam)
 
-                if self.verbose:
+                if self.verbose and (iteration % 50 == 0 or iteration <= 5):
                     print(
                         f"  {iteration:>5}  {det_val:>14.6e}  {gaussian_entropy:>12.4f}  {lam:>10.2e}"
                     )
@@ -208,6 +225,11 @@ class DataFrameTransformer:
 
         # Set final coefficients
         self.transformation_.set_coefficients_flat(x)
+
+        if self.verbose:
+            print(
+                f"\n  Final: det = {det_val:.6e}, H(Gaussian) = {gaussian_entropy:.4f}"
+            )
 
     def transform(self, df):
         """
@@ -274,15 +296,14 @@ class DataFrameTransformer:
             raise RuntimeError("Transformer not fitted. Call fit() first.")
 
         points_original = df_original[self.columns_].values.astype(np.float64)
-        points_transformed = df_transformed[self.columns_].values.astype(
-            np.float64
-        )
+        points_transformed = df_transformed[self.columns_].values.astype(np.float64)
 
         cov_original = np.cov(points_original, rowvar=False)
         cov_transformed = np.cov(points_transformed, rowvar=False)
 
         return {
             "original": {
+                "uniform_entropy": shannon_entropy_uniform(points_original),
                 "knn_entropy": shannon_entropy_knn(points_original),
                 "determinant": np.linalg.det(cov_original),
             },
@@ -299,7 +320,6 @@ def transform_csv(
     output_path: str,
     columns: list[str],
     sigma: float = 5.0,
-    center_stride: int = 1,
     verbose: bool = True,
 ):
     """
@@ -317,8 +337,6 @@ def transform_csv(
         Column names containing the coordinates to transform.
     sigma : float, optional
         Width parameter for Gaussian RBF basis functions. Default is 5.0.
-    center_stride : int, optional
-        Use every nth point as a basis center. Default is 1.
     verbose : bool, optional
         Print progress. Default is True.
 
@@ -344,7 +362,6 @@ def transform_csv(
 
     transformer = DataFrameTransformer(
         sigma=sigma,
-        center_stride=center_stride,
         verbose=verbose,
     )
 
@@ -360,17 +377,16 @@ def transform_csv(
     if verbose:
         print("\nEntropy comparison:")
         print(
-            f"  Original k-NN entropy:    {entropy['original']['knn_entropy']:.6f}"
+            f"  Original uniform entropy: {entropy['original']['uniform_entropy']:.6f}"
         )
+        print(f"  Original k-NN entropy:    {entropy['original']['knn_entropy']:.6f}")
         print(
             f"  Transformed k-NN entropy: {entropy['transformed']['knn_entropy']:.6f}"
         )
         print(
             f"  Transformed Gaussian H:   {entropy['transformed']['gaussian_entropy']:.6f}"
         )
-        print(
-            f"\n  Original determinant:     {entropy['original']['determinant']:.6e}"
-        )
+        print(f"\n  Original determinant:     {entropy['original']['determinant']:.6e}")
         print(
             f"  Transformed determinant:  {entropy['transformed']['determinant']:.6e}"
         )

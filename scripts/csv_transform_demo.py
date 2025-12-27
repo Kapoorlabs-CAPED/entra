@@ -16,9 +16,7 @@ import pandas as pd
 from entra import DataFrameTransformer, transform_csv
 
 
-def generate_sample_data(
-    n_points: int = 400, dimensions: int = 2
-) -> pd.DataFrame:
+def generate_sample_data(n_points: int = 400, dimensions: int = 2) -> pd.DataFrame:
     """Generate uniform sample data for demonstration."""
     # Create uniform grid
     n_per_dim = int(np.ceil(n_points ** (1 / dimensions)))
@@ -31,9 +29,7 @@ def generate_sample_data(
             "id": range(len(xx.ravel())),
             "x": xx.ravel(),
             "y": yy.ravel(),
-            "label": [
-                "A" if i % 2 == 0 else "B" for i in range(len(xx.ravel()))
-            ],
+            "label": ["A" if i % 2 == 0 else "B" for i in range(len(xx.ravel()))],
         }
     elif dimensions == 3:
         n_per_dim = int(np.ceil(n_points ** (1 / 3)))
@@ -46,9 +42,7 @@ def generate_sample_data(
             "x": xx.ravel(),
             "y": yy.ravel(),
             "z": zz.ravel(),
-            "label": [
-                "A" if i % 2 == 0 else "B" for i in range(len(xx.ravel()))
-            ],
+            "label": ["A" if i % 2 == 0 else "B" for i in range(len(xx.ravel()))],
         }
     else:
         raise ValueError("Only 2D and 3D supported in this demo")
@@ -77,7 +71,6 @@ def demo_dataframe_api():
 
     transformer = DataFrameTransformer(
         sigma=5.0,
-        center_stride=1,  # Use all points as centers
         max_iterations=100,
         verbose=True,
     )
@@ -89,30 +82,20 @@ def demo_dataframe_api():
     print("Entropy Comparison")
     print("-" * 70)
     entropy = transformer.get_entropy_comparison(df, df_transformed)
-    print(
-        f"  Original k-NN entropy:    {entropy['original']['knn_entropy']:.6f}"
-    )
-    print(
-        f"  Transformed k-NN entropy: {entropy['transformed']['knn_entropy']:.6f}"
-    )
+    print(f"  Original k-NN entropy:    {entropy['original']['knn_entropy']:.6f}")
+    print(f"  Transformed k-NN entropy: {entropy['transformed']['knn_entropy']:.6f}")
     print(
         f"  Transformed Gaussian H:   {entropy['transformed']['gaussian_entropy']:.6f}"
     )
-    print(
-        f"\n  Original determinant:     {entropy['original']['determinant']:.6e}"
-    )
-    print(
-        f"  Transformed determinant:  {entropy['transformed']['determinant']:.6e}"
-    )
+    print(f"\n  Original determinant:     {entropy['original']['determinant']:.6e}")
+    print(f"  Transformed determinant:  {entropy['transformed']['determinant']:.6e}")
 
     # Show transformed data
     print("\nTransformed data (first 5 rows):")
     print(df_transformed.head())
 
     # Note: other columns (id, label) are preserved
-    print(
-        f"\nNote: Non-coordinate columns preserved: {list(df_transformed.columns)}"
-    )
+    print(f"\nNote: Non-coordinate columns preserved: {list(df_transformed.columns)}")
 
     return df, df_transformed
 
@@ -143,7 +126,6 @@ def demo_csv_api():
         output_path=output_path,
         columns=["x", "y", "z"],
         sigma=5.0,
-        center_stride=1,
         verbose=True,
     )
 
@@ -156,9 +138,9 @@ def demo_csv_api():
 
 
 def demo_large_dataset():
-    """Demonstrate handling larger datasets with center_stride."""
+    """Demonstrate handling larger datasets."""
     print("\n" + "=" * 70)
-    print("DEMO 3: Large Dataset (using center_stride)")
+    print("DEMO 3: Large Dataset")
     print("=" * 70)
 
     # Generate larger dataset
@@ -176,17 +158,12 @@ def demo_large_dataset():
     )
     print(f"  Shape: {df.shape}")
 
-    # Use center_stride to reduce computation
-    # Instead of 10000 centers, use every 10th point = 1000 centers
     print("\n" + "-" * 70)
-    print(
-        "Transforming with center_stride=10 (1000 centers instead of 10000)..."
-    )
+    print("Transforming large dataset...")
     print("-" * 70)
 
     transformer = DataFrameTransformer(
         sigma=5.0,
-        center_stride=10,  # Use every 10th point
         max_iterations=50,
         verbose=True,
     )
@@ -194,12 +171,8 @@ def demo_large_dataset():
     df_transformed = transformer.fit_transform(df, columns=["x", "y"])
 
     entropy = transformer.get_entropy_comparison(df, df_transformed)
-    print(
-        f"\n  Original k-NN entropy:    {entropy['original']['knn_entropy']:.6f}"
-    )
-    print(
-        f"  Transformed k-NN entropy: {entropy['transformed']['knn_entropy']:.6f}"
-    )
+    print(f"\n  Original k-NN entropy:    {entropy['original']['knn_entropy']:.6f}")
+    print(f"  Transformed k-NN entropy: {entropy['transformed']['knn_entropy']:.6f}")
     print(
         f"  Determinant reduction:    {entropy['original']['determinant'] / entropy['transformed']['determinant']:.2f}x"
     )

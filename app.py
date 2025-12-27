@@ -16,9 +16,7 @@ from entra import DataFrameTransformer
 matplotlib.use("Agg")
 
 
-def generate_uniform_data(
-    n_per_dim: int = 20, dimensions: int = 2
-) -> pd.DataFrame:
+def generate_uniform_data(n_per_dim: int = 20, dimensions: int = 2) -> pd.DataFrame:
     """Generate uniform grid data."""
     if dimensions == 2:
         x = np.linspace(-10, 10, n_per_dim)
@@ -74,7 +72,6 @@ def run_transformation(
     df_state,
     columns_str: str,
     sigma: float,
-    center_stride: int,
     max_iterations: int,
 ):
     """Run the LM optimization and return results."""
@@ -104,7 +101,6 @@ def run_transformation(
     # Create transformer
     transformer = DataFrameTransformer(
         sigma=sigma,
-        center_stride=center_stride,
         max_iterations=max_iterations,
         verbose=False,
     )
@@ -133,18 +129,14 @@ def create_scatter_plot(df_orig, df_trans, columns):
     if len(columns) >= 2:
         x_col, y_col = columns[0], columns[1]
 
-        axes[0].scatter(
-            df_orig[x_col], df_orig[y_col], c="blue", alpha=0.5, s=10
-        )
+        axes[0].scatter(df_orig[x_col], df_orig[y_col], c="blue", alpha=0.5, s=10)
         axes[0].set_xlabel(x_col)
         axes[0].set_ylabel(y_col)
         axes[0].set_title("Original Distribution")
         axes[0].set_aspect("equal")
         axes[0].grid(True, alpha=0.3)
 
-        axes[1].scatter(
-            df_trans[x_col], df_trans[y_col], c="red", alpha=0.5, s=10
-        )
+        axes[1].scatter(df_trans[x_col], df_trans[y_col], c="red", alpha=0.5, s=10)
         axes[1].set_xlabel(x_col)
         axes[1].set_ylabel(y_col)
         axes[1].set_title("Transformed (Towards Gaussian)")
@@ -165,26 +157,20 @@ def create_histogram_plot(df_orig, df_trans, columns):
 
     for i, col in enumerate(columns[:n_cols]):
         # Original
-        axes[i, 0].hist(
-            df_orig[col], bins=30, density=True, alpha=0.7, color="blue"
-        )
+        axes[i, 0].hist(df_orig[col], bins=30, density=True, alpha=0.7, color="blue")
         axes[i, 0].set_xlabel(col)
         axes[i, 0].set_ylabel("Density")
         axes[i, 0].set_title(f"Original {col} Marginal")
 
         # Transformed with Gaussian overlay
-        axes[i, 1].hist(
-            df_trans[col], bins=30, density=True, alpha=0.7, color="red"
-        )
+        axes[i, 1].hist(df_trans[col], bins=30, density=True, alpha=0.7, color="red")
         x_range = np.linspace(df_trans[col].min(), df_trans[col].max(), 100)
         mu = df_trans[col].mean()
         std = df_trans[col].std()
         gaussian = (1 / (std * np.sqrt(2 * np.pi))) * np.exp(
             -0.5 * ((x_range - mu) / std) ** 2
         )
-        axes[i, 1].plot(
-            x_range, gaussian, "k--", linewidth=2, label="Gaussian fit"
-        )
+        axes[i, 1].plot(x_range, gaussian, "k--", linewidth=2, label="Gaussian fit")
         axes[i, 1].set_xlabel(col)
         axes[i, 1].set_ylabel("Density")
         axes[i, 1].set_title(f"Transformed {col} Marginal")
@@ -199,18 +185,14 @@ def create_history_plot(history):
     fig, axes = plt.subplots(1, 2, figsize=(12, 4))
 
     # Determinant
-    axes[0].semilogy(
-        history["iteration"], history["determinant"], "b-o", markersize=4
-    )
+    axes[0].semilogy(history["iteration"], history["determinant"], "b-o", markersize=4)
     axes[0].set_xlabel("Iteration")
     axes[0].set_ylabel("Covariance Determinant")
     axes[0].set_title("Determinant Minimization")
     axes[0].grid(True, alpha=0.3)
 
     # Gaussian entropy
-    axes[1].plot(
-        history["iteration"], history["gaussian_entropy"], "r-o", markersize=4
-    )
+    axes[1].plot(history["iteration"], history["gaussian_entropy"], "r-o", markersize=4)
     axes[1].set_xlabel("Iteration")
     axes[1].set_ylabel("H(Gaussian)")
     axes[1].set_title(
@@ -225,8 +207,7 @@ def create_history_plot(history):
 def format_results(entropy, history):
     """Format results as text."""
     det_reduction = (
-        entropy["original"]["determinant"]
-        / entropy["transformed"]["determinant"]
+        entropy["original"]["determinant"] / entropy["transformed"]["determinant"]
     )
 
     text = f"""
@@ -369,13 +350,9 @@ def create_app():
                             file_upload = gr.File(
                                 label="Upload CSV file", file_types=[".csv"]
                             )
-                            upload_btn = gr.Button(
-                                "Load CSV", variant="secondary"
-                            )
+                            upload_btn = gr.Button("Load CSV", variant="secondary")
 
-                        with gr.Accordion(
-                            "Option B: Generate Uniform Data", open=True
-                        ):
+                        with gr.Accordion("Option B: Generate Uniform Data", open=True):
                             n_per_dim = gr.Slider(
                                 minimum=5,
                                 maximum=50,
@@ -390,9 +367,7 @@ def create_app():
                                 "Generate Uniform Distribution",
                                 variant="secondary",
                             )
-                            download_file = gr.File(
-                                label="Download generated CSV"
-                            )
+                            download_file = gr.File(label="Download generated CSV")
 
                         data_info = gr.Textbox(
                             label="Data Info", lines=8, interactive=False
@@ -410,13 +385,6 @@ def create_app():
                             value=5.0,
                             step=0.1,
                             label="Sigma (RBF width)",
-                        )
-                        center_stride = gr.Slider(
-                            minimum=1,
-                            maximum=20,
-                            value=1,
-                            step=1,
-                            label="Center stride (1 = use all points as centers)",
                         )
                         max_iterations = gr.Slider(
                             minimum=10,
@@ -440,17 +408,13 @@ def create_app():
                         )
 
                         with gr.Row():
-                            scatter_plot = gr.Plot(
-                                label="Before/After Scatter"
-                            )
+                            scatter_plot = gr.Plot(label="Before/After Scatter")
 
                         with gr.Row():
                             hist_plot = gr.Plot(label="Marginal Distributions")
 
                         with gr.Row():
-                            history_plot = gr.Plot(
-                                label="Optimization History"
-                            )
+                            history_plot = gr.Plot(label="Optimization History")
 
             with gr.Tab("How LM Works"):
                 gr.Markdown(LM_EXPLANATION)
@@ -483,7 +447,6 @@ def create_app():
                 df_state,
                 columns_input,
                 sigma,
-                center_stride,
                 max_iterations,
             ],
             outputs=[scatter_plot, hist_plot, history_plot, results_text],

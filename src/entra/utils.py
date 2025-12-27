@@ -5,6 +5,7 @@ Utility functions for entra.
 from typing import Tuple, Union
 
 import numpy as np
+from matplotlib.patches import Ellipse
 
 
 def gradient_component(
@@ -54,8 +55,7 @@ def gradient_component(
     slices_center[axis] = slice(1, -1)
 
     grad[tuple(slices_center)] = (
-        scalar_field[tuple(slices_forward)]
-        - scalar_field[tuple(slices_backward)]
+        scalar_field[tuple(slices_forward)] - scalar_field[tuple(slices_backward)]
     ) / (2 * dx)
 
     # Forward difference at start boundary
@@ -65,8 +65,7 @@ def gradient_component(
     slices_start_next[axis] = 1
 
     grad[tuple(slices_start)] = (
-        scalar_field[tuple(slices_start_next)]
-        - scalar_field[tuple(slices_start)]
+        scalar_field[tuple(slices_start_next)] - scalar_field[tuple(slices_start)]
     ) / dx
 
     # Backward difference at end boundary
@@ -126,9 +125,7 @@ def divergence_components(
 
     if is_flat:
         if grid_shape is None:
-            raise ValueError(
-                "For flat format (N, D), grid_shape must be provided."
-            )
+            raise ValueError("For flat format (N, D), grid_shape must be provided.")
         N, D = vector_field.shape
         expected_N = np.prod(grid_shape)
         if N != expected_N:
@@ -603,9 +600,7 @@ def shannon_entropy_knn(points: np.ndarray, k: int = 3) -> float:
     # Avoid log(0) for duplicate points
     rho_k = np.maximum(rho_k, 1e-10)
 
-    entropy = (
-        D * np.mean(np.log(2 * rho_k)) + log_v_d + digamma(J) - digamma(k)
-    )
+    entropy = D * np.mean(np.log(2 * rho_k)) + log_v_d + digamma(J) - digamma(k)
 
     return entropy
 
@@ -648,3 +643,39 @@ def shannon_entropy_uniform(points: np.ndarray) -> float:
     if volume <= 0:
         return -np.inf
     return np.log(volume)
+
+
+def plot_covariance_ellipse(
+    ax, mean: np.ndarray, cov: np.ndarray, n_std: int = 2, **kwargs
+):
+    """
+    Plot a covariance ellipse on a matplotlib axis.
+
+    Parameters
+    ----------
+    ax : matplotlib.axes.Axes
+        The axes to plot on.
+    mean : np.ndarray
+        Mean of the distribution, shape (2,).
+    cov : np.ndarray
+        Covariance matrix, shape (2, 2).
+    n_std : int
+        Number of standard deviations for the ellipse radius. Default is 2.
+    **kwargs
+        Additional keyword arguments passed to matplotlib.patches.Ellipse.
+
+    Returns
+    -------
+    matplotlib.patches.Ellipse
+        The ellipse patch added to the axes.
+    """
+    eigvals, eigvecs = np.linalg.eigh(cov)
+    order = eigvals.argsort()[::-1]
+    eigvals, eigvecs = eigvals[order], eigvecs[:, order]
+
+    angle = np.degrees(np.arctan2(*eigvecs[:, 0][::-1]))
+    width, height = 2 * n_std * np.sqrt(eigvals)
+
+    ellipse = Ellipse(xy=mean, width=width, height=height, angle=angle, **kwargs)
+    ax.add_patch(ellipse)
+    return ellipse

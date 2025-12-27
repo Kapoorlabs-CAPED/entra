@@ -3,7 +3,6 @@
 [![License BSD-3](https://img.shields.io/pypi/l/entra.svg?color=green)](https://github.com/Kapoorlabs-CAPED/entra/raw/main/LICENSE)
 [![PyPI](https://img.shields.io/pypi/v/entra.svg?color=green)](https://pypi.org/project/entra)
 [![Python Version](https://img.shields.io/pypi/pyversions/entra.svg?color=green)](https://python.org)
-[![tests](https://github.com/Kapoorlabs-CAPED/entra/workflows/tests/badge.svg)](https://github.com/Kapoorlabs-CAPED/entra/actions)
 [![codecov](https://codecov.io/gh/Kapoorlabs-CAPED/entra/branch/main/graph/badge.svg)](https://codecov.io/gh/Kapoorlabs-CAPED/entra)
 
 Divergence-free tensor basis functions for incompressible vector field representation and entropy-conserving transformations.
