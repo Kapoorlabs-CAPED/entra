@@ -4,6 +4,7 @@ except ImportError:
     __version__ = "unknown"
 
 from .covariance_minimizer import CovarianceMinimizer
+from .dataframe_transformer import DataFrameTransformer, transform_csv
 from .effective_basis import (
     EffectiveCovarianceMinimizer,
     EffectiveTransformation,
@@ -31,6 +32,8 @@ __all__ = [
     "TensorBasis",
     "Transformation",
     "CovarianceMinimizer",
+    "DataFrameTransformer",
+    "transform_csv",
     "EffectiveTransformation",
     "EffectiveCovarianceMinimizer",
     "gradient_component",
