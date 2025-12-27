@@ -58,11 +58,13 @@ class DataFrameTransformer:
         max_iterations: int = 1000,
         tolerance: float = 1e-18,
         verbose: bool = True,
+        progress_callback: callable = None,
     ):
         self.sigma = sigma
         self.max_iterations = max_iterations
         self.tolerance = tolerance
         self.verbose = verbose
+        self.progress_callback = progress_callback
 
         # Fitted attributes
         self.transformation_ = None
@@ -173,6 +175,10 @@ class DataFrameTransformer:
                 f"  {0:>5}  {det_val:>14.6e}  {gaussian_entropy:>12.4f}  {lam:>10.2e}"
             )
 
+        # Initial progress callback
+        if self.progress_callback is not None:
+            self.progress_callback(0, self.max_iterations, det_val, gaussian_entropy)
+
         for iteration in range(1, self.max_iterations + 1):
             # Compute residuals and Jacobian
             r = minimizer.residuals_for_lm(x)
@@ -214,6 +220,12 @@ class DataFrameTransformer:
                 if self.verbose and (iteration % 50 == 0 or iteration <= 5):
                     print(
                         f"  {iteration:>5}  {det_val:>14.6e}  {gaussian_entropy:>12.4f}  {lam:>10.2e}"
+                    )
+
+                # Progress callback
+                if self.progress_callback is not None:
+                    self.progress_callback(
+                        iteration, self.max_iterations, det_val, gaussian_entropy
                     )
 
                 if improvement < self.tolerance:

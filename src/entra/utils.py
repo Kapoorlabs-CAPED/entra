@@ -2,6 +2,7 @@
 Utility functions for entra.
 """
 
+import math
 from typing import Tuple, Union
 
 import numpy as np
@@ -595,7 +596,7 @@ def shannon_entropy_knn(points: np.ndarray, k: int = 3) -> float:
     # H = D * mean(log(rho_k)) + log(V_D) + log(J-1) - digamma(k)
     # where V_D is volume of unit ball in D dimensions
     # V_D = pi^(D/2) / Gamma(D/2 + 1)
-    log_v_d = (D / 2) * np.log(np.pi) - np.math.lgamma(D / 2 + 1)
+    log_v_d = (D / 2) * np.log(np.pi) - math.lgamma(D / 2 + 1)
 
     # Avoid log(0) for duplicate points
     rho_k = np.maximum(rho_k, 1e-10)

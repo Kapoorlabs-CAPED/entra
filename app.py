@@ -11,24 +11,31 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from entra import DataFrameTransformer
+from entra import DataFrameTransformer, VectorSampler
 
 matplotlib.use("Agg")
 
 
 def generate_uniform_data(n_per_dim: int = 20, dimensions: int = 2) -> pd.DataFrame:
-    """Generate uniform grid data."""
+    """Generate uniform grid data using VectorSampler."""
     if dimensions == 2:
-        x = np.linspace(-10, 10, n_per_dim)
-        y = np.linspace(-10, 10, n_per_dim)
-        xx, yy = np.meshgrid(x, y)
-        df = pd.DataFrame({"x": xx.ravel(), "y": yy.ravel()})
+        center = [0.0, 0.0]
     else:  # 3D
-        x = np.linspace(-10, 10, n_per_dim)
-        y = np.linspace(-10, 10, n_per_dim)
-        z = np.linspace(-10, 10, n_per_dim)
-        xx, yy, zz = np.meshgrid(x, y, z)
-        df = pd.DataFrame({"x": xx.ravel(), "y": yy.ravel(), "z": zz.ravel()})
+        center = [0.0, 0.0, 0.0]
+
+    sampler = VectorSampler(
+        center=center,
+        delta_x=1,
+        num_points_per_dim=n_per_dim,
+        distribution="uniform",
+    )
+    points = sampler.sample()
+
+    if dimensions == 2:
+        df = pd.DataFrame({"x": points[:, 0], "y": points[:, 1]})
+    else:
+        df = pd.DataFrame({"x": points[:, 0], "y": points[:, 1], "z": points[:, 2]})
+
     return df
 
 
@@ -73,6 +80,7 @@ def run_transformation(
     columns_str: str,
     sigma: float,
     max_iterations: int,
+    progress=gr.Progress(),
 ):
     """Run the LM optimization and return results."""
     if df_state is None:
@@ -98,11 +106,19 @@ def run_transformation(
             f"Error: Columns not found: {missing}. Available: {list(df.columns)}",
         )
 
-    # Create transformer
+    # Progress callback for the transformer
+    def progress_callback(iteration, max_iter, det_val, entropy_val):
+        progress(
+            iteration / max_iter,
+            desc=f"Iter {iteration}/{max_iter} | Det: {det_val:.2e} | H: {entropy_val:.4f}",
+        )
+
+    # Create transformer with progress callback
     transformer = DataFrameTransformer(
         sigma=sigma,
         max_iterations=max_iterations,
         verbose=False,
+        progress_callback=progress_callback,
     )
 
     # Run transformation
@@ -346,13 +362,29 @@ def create_app():
                     with gr.Column(scale=1):
                         gr.Markdown("### Step 1: Load or Generate Data")
 
-                        with gr.Accordion("Option A: Upload CSV", open=True):
-                            file_upload = gr.File(
-                                label="Upload CSV file", file_types=[".csv"]
-                            )
-                            upload_btn = gr.Button("Load CSV", variant="secondary")
+                        gr.Markdown(
+                            """
+**No CSV file?** Use "Generate Sample Data" below to create a uniform grid.
 
-                        with gr.Accordion("Option B: Generate Uniform Data", open=True):
+**Have your own CSV?** Format requirements:
+- Header row with column names
+- Numeric columns for coordinates (e.g., `x`, `y`, `z`)
+- Example:
+```
+x,y
+-9.5,-9.5
+-9.5,-8.5
+...
+```
+"""
+                        )
+
+                        with gr.Accordion(
+                            "Generate Sample Data (no CSV needed)", open=True
+                        ):
+                            gr.Markdown(
+                                "*Creates a uniform grid using VectorSampler - perfect for testing*"
+                            )
                             n_per_dim = gr.Slider(
                                 minimum=5,
                                 maximum=50,
@@ -365,9 +397,15 @@ def create_app():
                             )
                             generate_btn = gr.Button(
                                 "Generate Uniform Distribution",
-                                variant="secondary",
+                                variant="primary",
                             )
                             download_file = gr.File(label="Download generated CSV")
+
+                        with gr.Accordion("Upload Your Own CSV", open=False):
+                            file_upload = gr.File(
+                                label="Upload CSV file", file_types=[".csv"]
+                            )
+                            upload_btn = gr.Button("Load CSV", variant="secondary")
 
                         data_info = gr.Textbox(
                             label="Data Info", lines=8, interactive=False
