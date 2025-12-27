@@ -1,0 +1,6 @@
+# Coarse sigma sweep - wide range exploration
+# Use this to find the approximate optimal sigma region
+
+enabled: true
+sigmas: [1, 2, 3, 5, 7, 10]
+description: "Coarse sweep: wide sigma range to identify optimal region"
