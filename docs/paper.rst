@@ -72,7 +72,7 @@ Consider a random variable :math:`X` with probability density :math:`p_X(x)`. Un
 
 .. math::
 
-    p_Y(y) = \frac{p_X(T^{-1}(y))}{|\det(J_T(T^{-1}(y)))|}
+    p_Y(y) = \frac{p_X(T^{-1}(y))}{|\det(J_T(T^{-1}(y)))|)
 
 where :math:`J_T = \frac{\partial T}{\partial x}` is the Jacobian matrix of the transformation.
 
@@ -106,7 +106,7 @@ This gives us the **fundamental entropy transformation law**:
 
 .. math::
 
-    \boxed{H(Y) = H(X) + \mathbb{E}_X\left[\ln|\det(J_T(X))|\right]}
+    (H(Y) = H(X) + E_X\left[\ln|\det(J_T(X))|\right])
 
 **The Entropy Conservation Condition**
 
@@ -114,7 +114,7 @@ For entropy to be conserved (:math:`H(Y) = H(X)`), we require:
 
 .. math::
 
-    \mathbb{E}_X\left[\ln|\det(J_T(X))|\right] = 0
+    E_X\left[\ln|\det(J_T(X))|\right] = 0
 
 **Volume Preservation Implies Entropy Conservation**
 
@@ -128,7 +128,7 @@ and therefore:
 
 .. math::
 
-    \mathbb{E}_X\left[\ln|\det(J_T(X))|\right] = 0
+    E_X\left[\ln|\det(J_T(X))|\right] = 0
 
 Thus volume preservation is a **sufficient condition** for entropy conservation.
 
@@ -174,7 +174,7 @@ We have established:
 
 .. math::
 
-    \nabla \cdot v = 0 \implies |\det(J)| = 1 \implies H(Y) = H(X)
+    \nabla \cdot v = 0 \Rightarrow |\det(J)| = 1 \Rightarrow H(Y) = H(X)
 
 In words:
 
@@ -240,7 +240,7 @@ Stage 1: Initial Optimization
 2. Place L centers for the divergence-free basis functions
 3. Construct the tensor basis :math:`\Phi` of shape (J, L, D, D)
 4. Define transformation: :math:`y' = y + \sum_l \Phi_l(y) c_l` with coefficients :math:`c` of shape (L, D)
-5. Minimize :math:`\det(\text{Cov}(y'))` using Levenberg-Marquardt optimization
+5. Minimize :math:`\det(\mathrm{Cov}(y'))` using Levenberg-Marquardt optimization
 6. Compute the effective basis: :math:`V_l = \Phi_l \cdot c_l`
 
 Stage 2: Iterative Refinement (Outer Loop)
@@ -251,7 +251,7 @@ After Stage 1, the tensor basis (J, L, D, D) with coefficients (L, D) collapses 
 For each outer iteration:
 
 1. Create transformation: :math:`y' = y + \sum_l c_l V_l` with L scalar coefficients
-2. Minimize :math:`\det(\text{Cov}(y'))` over the L scalar coefficients
+2. Minimize :math:`\det(\mathrm{Cov}(y'))` over the L scalar coefficients
 3. Update the basis: :math:`V_l \leftarrow c_l V_l`
 4. Transform points: :math:`y \leftarrow y'`
 5. Repeat until convergence
