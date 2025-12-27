@@ -126,11 +126,12 @@ def run_transformation(
 
     # Get entropy comparison
     entropy = transformer.get_entropy_comparison(df, df_transformed)
+    target_entropy = entropy["original"]["uniform_entropy"]
 
     # Create plots
     fig_scatter = create_scatter_plot(df, df_transformed, columns)
     fig_hist = create_histogram_plot(df, df_transformed, columns)
-    fig_history = create_history_plot(transformer.history_)
+    fig_history = create_history_plot(transformer.history_, target_entropy=target_entropy)
 
     # Create results text
     results_text = format_results(entropy, transformer.history_)
@@ -196,7 +197,7 @@ def create_histogram_plot(df_orig, df_trans, columns):
     return fig
 
 
-def create_history_plot(history):
+def create_history_plot(history, target_entropy=None):
     """Create optimization history plot."""
     fig, axes = plt.subplots(1, 2, figsize=(12, 4))
 
@@ -209,11 +210,18 @@ def create_history_plot(history):
 
     # Gaussian entropy
     axes[1].plot(history["iteration"], history["gaussian_entropy"], "r-o", markersize=4)
+    if target_entropy is not None:
+        axes[1].axhline(
+            target_entropy,
+            color="green",
+            linestyle="--",
+            linewidth=2,
+            label=f"Target H(uniform) = {target_entropy:.4f}",
+        )
+        axes[1].legend()
     axes[1].set_xlabel("Iteration")
     axes[1].set_ylabel("H(Gaussian)")
-    axes[1].set_title(
-        "Gaussian Entropy Bound\n(decreases because we start from uniform)"
-    )
+    axes[1].set_title("Gaussian Entropy → Target Uniform Entropy")
     axes[1].grid(True, alpha=0.3)
 
     plt.tight_layout()
@@ -225,22 +233,29 @@ def format_results(entropy, history):
     det_reduction = (
         entropy["original"]["determinant"] / entropy["transformed"]["determinant"]
     )
+    target_entropy = entropy["original"]["uniform_entropy"]
+    final_entropy = entropy["transformed"]["gaussian_entropy"]
+    entropy_gap = final_entropy - target_entropy
 
     text = f"""
 TRANSFORMATION RESULTS
 {'=' * 50}
 
-Entropy Comparison (k-NN estimator):
-  Original:    {entropy['original']['knn_entropy']:.6f} nats
-  Transformed: {entropy['transformed']['knn_entropy']:.6f} nats
-  Difference:  {abs(entropy['original']['knn_entropy'] - entropy['transformed']['knn_entropy']):.6f} nats
+Target Entropy (Uniform Distribution):
+  H(uniform) = {target_entropy:.6f} nats
 
-  (k-NN entropy should remain ~constant for volume-preserving transformation)
+  This is the true entropy we want to reach.
 
 Gaussian Entropy of Transformed Data:
-  H(Gaussian): {entropy['transformed']['gaussian_entropy']:.6f} nats
+  H(Gaussian) = {final_entropy:.6f} nats
 
-  (This is the entropy IF the transformed data were perfectly Gaussian)
+  This assumes the transformed data is Gaussian with the
+  current covariance. When H(Gaussian) = H(uniform), the
+  distribution is perfectly Gaussian.
+
+Gap to Target:
+  H(Gaussian) - H(uniform) = {entropy_gap:.6f} nats
+  (Should approach 0 for perfect Gaussianization)
 
 Covariance Determinant:
   Original:    {entropy['original']['determinant']:.6e}
@@ -387,7 +402,7 @@ x,y
                             )
                             n_per_dim = gr.Slider(
                                 minimum=5,
-                                maximum=50,
+                                maximum=500,
                                 value=20,
                                 step=1,
                                 label="Points per dimension",
@@ -416,17 +431,18 @@ x,y
                         columns_input = gr.Textbox(
                             value="x, y",
                             label="Columns to transform (comma-separated)",
+                            lines=3,
                         )
                         sigma = gr.Slider(
                             minimum=0.1,
-                            maximum=20.0,
+                            maximum=200.0,
                             value=5.0,
                             step=0.1,
                             label="Sigma (RBF width)",
                         )
                         max_iterations = gr.Slider(
                             minimum=10,
-                            maximum=500,
+                            maximum=5000,
                             value=100,
                             step=10,
                             label="Max iterations",

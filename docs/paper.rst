@@ -61,20 +61,127 @@ For infinitesimal transformations of the form :math:`y = x + \varepsilon v(x)`, 
 
 That is, the velocity field :math:`v` must be **divergence-free**. This is the incompressibility condition from fluid dynamics.
 
-Entropy Conservation
---------------------
+Entropy Conservation and Volume Preservation: The Complete Derivation
+----------------------------------------------------------------------
 
-Under a volume-preserving transformation, the differential entropy is conserved:
+We now derive the fundamental connection between entropy conservation and volume preservation, showing that **volume preservation is both necessary and sufficient for entropy conservation**.
 
-.. math::
+**The Change of Variables Formula for Entropy**
 
-    H(Y) = H(X)
-
-This follows from the change of variables formula for probability densities. If :math:`p_Y(y) = p_X(T^{-1}(y)) / |\det(J)|`, and :math:`|\det(J)| = 1`, then:
+Consider a random variable :math:`X` with probability density :math:`p_X(x)`. Under a smooth invertible transformation :math:`Y = T(X)`, the density of :math:`Y` is given by:
 
 .. math::
 
-    H(Y) = -\int p_Y(y) \ln p_Y(y) \, dy = -\int p_X(x) \ln p_X(x) \, dx = H(X)
+    p_Y(y) = \frac{p_X(T^{-1}(y))}{|\det(J_T(T^{-1}(y)))|}
+
+where :math:`J_T = \frac{\partial T}{\partial x}` is the Jacobian matrix of the transformation.
+
+**Derivation of Entropy Change**
+
+The differential entropy of :math:`Y` is:
+
+.. math::
+
+    H(Y) = -\int p_Y(y) \ln p_Y(y) \, dy
+
+Substituting the density transformation formula:
+
+.. math::
+
+    H(Y) = -\int \frac{p_X(T^{-1}(y))}{|\det(J_T)|} \ln\left(\frac{p_X(T^{-1}(y))}{|\det(J_T)|}\right) dy
+
+Applying the change of variables :math:`y = T(x)`, so :math:`dy = |\det(J_T)| dx`:
+
+.. math::
+
+    H(Y) = -\int p_X(x) \ln\left(\frac{p_X(x)}{|\det(J_T(x))|}\right) dx
+
+Expanding the logarithm:
+
+.. math::
+
+    H(Y) = -\int p_X(x) \ln p_X(x) \, dx + \int p_X(x) \ln|\det(J_T(x))| \, dx
+
+This gives us the **fundamental entropy transformation law**:
+
+.. math::
+
+    \boxed{H(Y) = H(X) + \mathbb{E}_X\left[\ln|\det(J_T(X))|\right]}
+
+**The Entropy Conservation Condition**
+
+For entropy to be conserved (:math:`H(Y) = H(X)`), we require:
+
+.. math::
+
+    \mathbb{E}_X\left[\ln|\det(J_T(X))|\right] = 0
+
+**Volume Preservation Implies Entropy Conservation**
+
+If the transformation is volume-preserving, meaning :math:`|\det(J_T(x))| = 1` for all :math:`x`, then:
+
+.. math::
+
+    \ln|\det(J_T(x))| = \ln(1) = 0
+
+and therefore:
+
+.. math::
+
+    \mathbb{E}_X\left[\ln|\det(J_T(X))|\right] = 0
+
+Thus volume preservation is a **sufficient condition** for entropy conservation.
+
+**Divergence-Free Fields Generate Volume-Preserving Flows**
+
+Consider a velocity field :math:`v(x)` and the flow it generates:
+
+.. math::
+
+    \frac{dx}{dt} = v(x)
+
+Let :math:`\Phi_t(x_0)` denote the position at time :math:`t` of a particle starting at :math:`x_0`. The Jacobian determinant of this flow map evolves according to **Liouville's equation**:
+
+.. math::
+
+    \frac{d}{dt}\det(J_{\Phi_t}) = \det(J_{\Phi_t}) \cdot (\nabla \cdot v)
+
+Taking the logarithm:
+
+.. math::
+
+    \frac{d}{dt}\ln|\det(J_{\Phi_t})| = \nabla \cdot v
+
+**The Divergence-Free Condition**
+
+If the vector field is divergence-free (:math:`\nabla \cdot v = 0`), then:
+
+.. math::
+
+    \frac{d}{dt}\ln|\det(J_{\Phi_t})| = 0
+
+This means :math:`\ln|\det(J_{\Phi_t})|` is constant along the flow. Since at :math:`t=0` we have :math:`\Phi_0(x) = x` (identity map), the Jacobian is :math:`J_{\Phi_0} = I` and :math:`\det(J_{\Phi_0}) = 1`.
+
+Therefore, for all :math:`t`:
+
+.. math::
+
+    |\det(J_{\Phi_t})| = 1
+
+**The Complete Chain of Implications**
+
+We have established:
+
+.. math::
+
+    \nabla \cdot v = 0 \implies |\det(J)| = 1 \implies H(Y) = H(X)
+
+In words:
+
+1. **Divergence-free vector field** :math:`\Rightarrow` **Volume-preserving transformation**
+2. **Volume-preserving transformation** :math:`\Rightarrow` **Entropy conservation**
+
+This is why we construct our transformations from divergence-free basis functions: it guarantees entropy conservation by construction, allowing us to minimize the covariance determinant while keeping entropy fixed.
 
 Divergence-Free Basis Functions
 ===============================

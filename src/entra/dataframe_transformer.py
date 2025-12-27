@@ -11,8 +11,7 @@ import pandas as pd
 from .covariance_minimizer import CovarianceMinimizer
 from .tensor_basis import TensorBasis
 from .transformation import Transformation
-from .utils import (shannon_entropy_gaussian, shannon_entropy_knn,
-                    shannon_entropy_uniform)
+from .utils import shannon_entropy_gaussian, shannon_entropy_uniform
 
 
 class DataFrameTransformer:
@@ -316,11 +315,9 @@ class DataFrameTransformer:
         return {
             "original": {
                 "uniform_entropy": shannon_entropy_uniform(points_original),
-                "knn_entropy": shannon_entropy_knn(points_original),
                 "determinant": np.linalg.det(cov_original),
             },
             "transformed": {
-                "knn_entropy": shannon_entropy_knn(points_transformed),
                 "gaussian_entropy": shannon_entropy_gaussian(cov_transformed),
                 "determinant": np.linalg.det(cov_transformed),
             },

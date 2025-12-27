@@ -11,9 +11,10 @@ from .scalar_basis import ScalarBasis
 from .tensor_basis import TensorBasis
 from .transformation import Transformation
 from .utils import (divergence, divergence_components, gradient_component,
-                    is_divergence_free, plot_covariance_ellipse,
-                    shannon_entropy_gaussian, shannon_entropy_knn,
-                    shannon_entropy_uniform, tensor_basis_column_divergence,
+                    is_divergence_free, plot_2d_projections,
+                    plot_covariance_ellipse, shannon_entropy_gaussian,
+                    shannon_entropy_knn, shannon_entropy_uniform,
+                    tensor_basis_column_divergence,
                     verify_divergence_free_symmetric,
                     verify_tensor_basis_divergence_free)
 from .vector_sampler import VectorSampler
@@ -39,4 +40,5 @@ __all__ = [
     "shannon_entropy_gaussian",
     "shannon_entropy_knn",
     "shannon_entropy_uniform",
+    "plot_2d_projections"
 ]

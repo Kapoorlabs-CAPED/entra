@@ -5,6 +5,7 @@ Utility functions for entra.
 import math
 from typing import Tuple, Union
 
+import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.patches import Ellipse
 
@@ -604,6 +605,42 @@ def shannon_entropy_knn(points: np.ndarray, k: int = 3) -> float:
     entropy = D * np.mean(np.log(2 * rho_k)) + log_v_d + digamma(J) - digamma(k)
 
     return entropy
+
+
+def plot_2d_projections(points, title_prefix, entropy=None, fig=None, axes=None):
+    """Plot XY, XZ, YZ projections of 3D points."""
+    if fig is None or axes is None:
+        fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+
+    projections = [
+        (0, 1, 'XY'),
+        (0, 2, 'XZ'),
+        (1, 2, 'YZ')
+    ]
+
+    for ax, (i, j, name) in zip(axes, projections):
+        pts_2d = points[:, [i, j]]
+        mean_2d = np.mean(pts_2d, axis=0)
+        cov_2d = np.cov(pts_2d, rowvar=False)
+        det_2d = np.linalg.det(cov_2d)
+
+        ax.scatter(pts_2d[:, 0], pts_2d[:, 1], alpha=0.3, s=10)
+        plot_covariance_ellipse(ax, mean_2d, cov_2d, n_std=2,
+                                fill=False, color='red', linewidth=2)
+
+        ax.set_xlabel(['X', 'X', 'Y'][projections.index((i, j, name))])
+        ax.set_ylabel(['Y', 'Z', 'Z'][projections.index((i, j, name))])
+        ax.set_title(f'{name} Projection\ndet = {det_2d:.2e}')
+        ax.set_aspect('equal')
+        ax.grid(True, alpha=0.3)
+
+    if entropy is not None:
+        fig.suptitle(f'{title_prefix} (H = {entropy:.4f} nats)', fontsize=14)
+    else:
+        fig.suptitle(title_prefix, fontsize=14)
+
+    plt.tight_layout()
+    return fig, axes
 
 
 def shannon_entropy_uniform(points: np.ndarray) -> float:
