@@ -1,5 +1,5 @@
 ====================================================================================
-Entropy-Conserving Transformations Using Divergence-Free Radial Basis Functions
+Entropy-Conserving Transformations Using Divergence-Free Vector Fields
 ====================================================================================
 
 :Author: Varun Kapoor
