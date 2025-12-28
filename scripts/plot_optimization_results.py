@@ -96,36 +96,52 @@ def _plot_single(df, sigma, target_entropy, output_file=None):
 
 def _plot_multi(df, sigmas, target_entropy, output_file=None):
     """Plot optimization history for multiple sigma values overlaid."""
-    colors = plt.cm.viridis(np.linspace(0, 1, len(sigmas)))
+    colors = plt.cm.tab10(np.linspace(0, 1, len(sigmas)))
 
     fig, axes = plt.subplots(1, 3, figsize=(16, 5))
+
+    # Find best sigma (smallest absolute gap)
+    final_gaps = {s: df[df['sigma'] == s]['gap'].iloc[-1] for s in sigmas}
+    best_sigma = min(final_gaps, key=lambda s: abs(final_gaps[s]))
 
     for i, sigma in enumerate(sigmas):
         sigma_df = df[df['sigma'] == sigma]
         rounds = sigma_df['round'].values
+        det_vals = sigma_df['determinant'].values
+        ent_vals = sigma_df['gaussian_entropy'].values
+        gap_vals = sigma_df['gap'].values
 
-        axes[0].semilogy(rounds, sigma_df['determinant'], '.-', color=colors[i], label=f'σ={sigma}', markersize=6, alpha=0.8)
-        axes[1].plot(rounds, sigma_df['gaussian_entropy'], '.-', color=colors[i], label=f'σ={sigma}', markersize=6, alpha=0.8)
-        axes[2].plot(rounds, sigma_df['gap'], '.-', color=colors[i], label=f'σ={sigma}', markersize=6, alpha=0.8)
+        # Make best sigma bold
+        lw = 3 if sigma == best_sigma else 1.5
+        ms = 10 if sigma == best_sigma else 6
+        fontweight = 'bold' if sigma == best_sigma else 'normal'
+
+        axes[0].semilogy(rounds, det_vals, '.-', color=colors[i], markersize=ms, linewidth=lw, alpha=0.8)
+        axes[1].plot(rounds, ent_vals, '.-', color=colors[i], markersize=ms, linewidth=lw, alpha=0.8)
+        axes[2].plot(rounds, gap_vals, '.-', color=colors[i], markersize=ms, linewidth=lw, alpha=0.8)
+
+        # Add sigma label at end of each line
+        axes[0].annotate(f's={sigma}', xy=(rounds[-1], det_vals[-1]), xytext=(5, 0), textcoords='offset points', fontsize=7, color=colors[i], va='center', fontweight=fontweight)
+        axes[1].annotate(f's={sigma}', xy=(rounds[-1], ent_vals[-1]), xytext=(5, 0), textcoords='offset points', fontsize=7, color=colors[i], va='center', fontweight=fontweight)
+        axes[2].annotate(f's={sigma}', xy=(rounds[-1], gap_vals[-1]), xytext=(5, 0), textcoords='offset points', fontsize=7, color=colors[i], va='center', fontweight=fontweight)
 
     axes[0].set_xlabel('Round')
     axes[0].set_ylabel('Determinant')
     axes[0].set_title('Determinant vs Round')
-    axes[0].legend(fontsize=8, ncol=2)
     axes[0].grid(True, alpha=0.3)
 
     axes[1].axhline(target_entropy, color='black', linestyle='--', linewidth=2, label=f'Target={target_entropy:.4f}')
     axes[1].set_xlabel('Round')
     axes[1].set_ylabel('H(Gaussian) [nats]')
     axes[1].set_title('Gaussian Entropy vs Round')
-    axes[1].legend(fontsize=8, ncol=2)
+    axes[1].legend(fontsize=8)
     axes[1].grid(True, alpha=0.3)
 
     axes[2].axhline(0, color='black', linestyle='--', linewidth=2, label='Target (gap=0)')
     axes[2].set_xlabel('Round')
     axes[2].set_ylabel('Gap [nats]')
     axes[2].set_title('Gap to Target vs Round')
-    axes[2].legend(fontsize=8, ncol=2)
+    axes[2].legend(fontsize=8)
     axes[2].grid(True, alpha=0.3)
 
     plt.suptitle('Optimization Progress for Different Sigma Values', fontsize=14)

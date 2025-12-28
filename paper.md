@@ -144,52 +144,38 @@ The package also provides:
 
 The RBF width parameter $\sigma$ controls the spatial scale of the divergence-free basis functions and significantly affects optimization performance. Too small a $\sigma$ produces basis functions that are too localized to create meaningful global displacements; too large a $\sigma$ produces nearly constant fields with negligible gradients.
 
-## Hydra Configuration
+## Experimental Setup
 
-`entra` uses Hydra for configuration management, enabling systematic parameter sweeps:
+We evaluate `entra` on a 2D uniform distribution sampled on a $20 \times 20$ regular grid, yielding $J = 400$ points in the domain $[-10, 10]^2$. The analytical entropy of this uniform distribution is $H_{\text{uniform}} = \ln(V) = 5.889$ nats, where $V$ is the volume of the support. The initial sample covariance has determinant $1.111 \times 10^3$.
 
-```yaml
-# conf/scenario_entra.yaml
-defaults:
-  - entra_base
-  - sweep: fine
-
-sampling:
-  dimension: 2
-  num_points_per_dim: 20
-
-stage1:
-  max_iterations: 1000
-
-stage2:
-  n_outer: 5
-  max_iterations: 1000
-```
-
-Sweep configurations define sigma ranges to test:
-
-```yaml
-# conf/sweep/fine.yaml
-enabled: true
-sigmas: [4.0, 4.5, 5.0, 5.5, 6.0, 6.5]
-```
+Basis function centers are placed along the coordinate axes at integer positions, providing coverage across the domain. The two-stage optimization uses 1000 maximum iterations for Stage 1 (tensor basis optimization) and 5 outer rounds of 1000 iterations each for Stage 2 (effective basis refinement).
 
 ## Sigma Sweep Results
 
-The optimal $\sigma$ minimizes the absolute gap between the final Gaussian entropy and the target uniform entropy. Table 1 shows results for a 2D uniform distribution with 400 points ($H_{\text{uniform}} = 5.889$ nats, initial determinant $= 1.111 \times 10^3$).
+The optimal $\sigma$ minimizes the absolute gap between the final Gaussian entropy $H_{\text{Gaussian}}(\Sigma)$ and the target uniform entropy $H_{\text{uniform}}$. Table 1 shows results from a fine sweep over $\sigma \in [3.0, 4.8]$.
 
-**Table 1.** Sigma sweep results for 2D uniform distribution ($20 \times 20$ grid).
+**Table 1.** Sigma sweep results for 2D uniform distribution ($20 \times 20$ grid, $H_{\text{uniform}} = 5.889$ nats).
 
 | $\sigma$ | Final Det | $H_{\text{Gaussian}}$ | Gap (nats) | Det Reduction |
 |----------|-----------|----------------------|------------|---------------|
-| 2.0 | $1.09 \times 10^3$ | 6.337 | +0.448 | 1.02$\times$ |
 | 3.0 | $9.92 \times 10^2$ | 6.288 | +0.399 | 1.12$\times$ |
+| 3.2 | $9.84 \times 10^2$ | 6.284 | +0.395 | 1.13$\times$ |
+| 3.4 | $9.58 \times 10^2$ | 6.270 | +0.381 | 1.16$\times$ |
+| 3.6 | $6.90 \times 10^2$ | 6.106 | +0.217 | 1.61$\times$ |
+| 3.8 | $5.31 \times 10^2$ | 5.976 | +0.087 | 2.09$\times$ |
 | **4.0** | $4.32 \times 10^2$ | **5.872** | **-0.017** | 2.57$\times$ |
-| 5.0 | $3.36 \times 10^2$ | 5.746 | -0.143 | 3.31$\times$ |
-| 7.0 | $1.10 \times 10^2$ | 5.188 | -0.701 | 10.10$\times$ |
-| 10.0 | $3.11 \times 10^2$ | 5.708 | -0.180 | 3.57$\times$ |
+| 4.2 | $3.65 \times 10^2$ | 5.788 | -0.100 | 3.04$\times$ |
+| 4.4 | $4.21 \times 10^2$ | 5.859 | -0.030 | 2.64$\times$ |
+| 4.6 | $3.81 \times 10^2$ | 5.810 | -0.079 | 2.91$\times$ |
+| 4.8 | $3.73 \times 10^2$ | 5.799 | -0.090 | 2.98$\times$ |
 
-The optimal $\sigma = 4.0$ achieves a gap of only $-0.017$ nats, confirming successful entropy-conserving Gaussianization. Smaller $\sigma$ values (2.0, 3.0) produce basis functions too localized to effectively reduce the covariance, resulting in positive gaps (under-compression). Larger $\sigma$ values (7.0) over-compress the distribution, yielding large negative gaps. The non-monotonic behavior at $\sigma = 10.0$ reflects the interplay between basis function overlap and optimization dynamics.
+The optimal $\sigma = 4.0$ achieves a gap of only $-0.017$ nats, confirming successful entropy-conserving Gaussianization. Smaller $\sigma$ values ($< 3.8$) produce basis functions too localized to effectively reduce the covariance, resulting in positive gaps (under-compression). Larger $\sigma$ values ($> 4.0$) over-compress the distribution, yielding negative gaps.
+
+Figure 1 shows the optimization progress across rounds for different $\sigma$ values. The determinant decreases monotonically while the Gaussian entropy approaches the target. Figure 2 summarizes the sigma sweep, highlighting that $\sigma = 4.0$ (blue border) achieves the smallest absolute gap.
+
+![Optimization history showing determinant reduction and entropy convergence across rounds for different sigma values.](figures/optimization_history.png)
+
+![Sigma sweep summary comparing final gap, determinant reduction, and Gaussian entropy across sigma values. The optimal sigma (blue border) minimizes the absolute gap to target entropy.](figures/sigma_sweep_summary.png)
 
 # Validation
 
@@ -207,8 +193,5 @@ Additionally, the package includes functions to numerically verify that all basi
 
 Source code: https://github.com/Kapoorlabs-CAPED/entra
 
-# Acknowledgements
-
-We acknowledge the foundational work of Lowitzsch on divergence-free radial basis functions.
 
 # References
