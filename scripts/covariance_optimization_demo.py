@@ -8,6 +8,7 @@ import pandas as pd
 from conf.scenario_entra import scenario_entra
 from hydra.core.config_store import ConfigStore
 from omegaconf import OmegaConf
+from tqdm import tqdm
 
 from entra import (CovarianceMinimizer, EffectiveCovarianceMinimizer,
                    EffectiveTransformation, TensorBasis, Transformation,
@@ -31,18 +32,16 @@ def run_optimization(eval_points, centers, sigma, cfg: scenario_entra, verbose=T
 
     Returns dict with final results and full history.
     """
-    D = eval_points.shape[1]
+
     target_entropy = shannon_entropy_uniform(eval_points)
 
     max_iter_stage1 = cfg.stage1.max_iterations
     max_iter_outer = cfg.stage2.max_iterations
     n_outer = cfg.stage2.n_outer
-    print_every = cfg.stage1.print_every
 
-    # Full history tracking
+    # History tracking (one entry per major round)
     full_history = {
-        'stage': [],
-        'iteration': [],
+        'round': [],
         'determinant': [],
         'gaussian_entropy': [],
         'gap': [],
@@ -62,28 +61,9 @@ def run_optimization(eval_points, centers, sigma, cfg: scenario_entra, verbose=T
     eps = 1e-7
     tol = cfg.stage1.tolerance
 
-    # Initial values
-    cov = minimizer.compute_covariance(x)
-    det_val = np.linalg.det(cov)
-    entropy_val = shannon_entropy_gaussian(cov)
-
-    # Record initial state
-    full_history['stage'].append(1)
-    full_history['iteration'].append(0)
-    full_history['determinant'].append(det_val)
-    full_history['gaussian_entropy'].append(entropy_val)
-    full_history['gap'].append(entropy_val - target_entropy)
-
-    if verbose:
-        print(f"\n  STAGE 1: TensorBasis Optimization (sigma={sigma})")
-        print(f"  Parameters: {n_params} (L={basis.L} x D={D})")
-        print(f"  Target H(uniform) = {target_entropy:.6f} nats")
-        print(f"  {'Iter':>6}  {'Determinant':>14}  {'H(Gaussian)':>12}  {'Gap':>12}")
-        print("  " + "-" * 50)
-        print(f"  {0:>6}  {det_val:>14.6e}  {entropy_val:>12.6f}  {entropy_val - target_entropy:>12.6f}")
-
     stage1_iter_count = 0
-    for iteration in range(1, max_iter_stage1 + 1):
+    pbar = tqdm(range(1, max_iter_stage1 + 1), desc=f"Stage 1 (s={sigma})", disable=not verbose)
+    for iteration in pbar:
         r = minimizer.residuals_for_lm(x)
 
         J_mat = np.zeros((len(r), n_params))
@@ -108,29 +88,21 @@ def run_optimization(eval_points, centers, sigma, cfg: scenario_entra, verbose=T
             x = x_new
             lam *= 0.1
             improvement = abs(obj_old - obj_new)
-            stage1_iter_count += 1
 
-            # Record every iteration
             cov = minimizer.compute_covariance(x)
             det_val = np.linalg.det(cov)
             entropy_val = shannon_entropy_gaussian(cov)
-
-            full_history['stage'].append(1)
-            full_history['iteration'].append(stage1_iter_count)
-            full_history['determinant'].append(det_val)
-            full_history['gaussian_entropy'].append(entropy_val)
-            full_history['gap'].append(entropy_val - target_entropy)
-
-            # Print every N iterations
-            if verbose and stage1_iter_count % print_every == 0:
-                print(f"  {stage1_iter_count:>6}  {det_val:>14.6e}  {entropy_val:>12.6f}  {entropy_val - target_entropy:>12.6f}")
+            pbar.set_postfix(det=f"{det_val:.2e}", gap=f"{entropy_val - target_entropy:.4f}")
 
             if improvement < tol:
-                if verbose:
-                    print(f"  Converged at iteration {stage1_iter_count}")
+                stage1_iter_count = iteration
+                pbar.close()
                 break
         else:
             lam *= 10.0
+    else:
+        # Loop completed without convergence
+        stage1_iter_count = max_iter_stage1
 
     transformation.set_coefficients_flat(x)
 
@@ -140,39 +112,24 @@ def run_optimization(eval_points, centers, sigma, cfg: scenario_entra, verbose=T
     stage1_entropy = shannon_entropy_gaussian(stage1_cov)
     stage1_points = transformation.transform(eval_points)
 
-    if verbose:
-        print(f"  Stage 1 complete ({stage1_iter_count} iters): det = {stage1_det:.6e}, H(Gaussian) = {stage1_entropy:.6f}")
-        print(f"  Gap to target: {stage1_entropy - target_entropy:.6f} nats")
-
-    # =========================================================================
-    # STAGE 2: Outer loop with EffectiveTransformation
-    # =========================================================================
-    # Collapse tensor basis to effective basis: (J, L, D, D) → (J, L, D)
-    updated_basis = transformation.get_updated_basis(eval_points)
-    current_basis = updated_basis.copy()
-    current_points = stage1_points.copy()
-
-    outer_history = {
-        'round': [0],
-        'determinant': [stage1_det],
-        'gaussian_entropy': [stage1_entropy],
-    }
-
-    # Record Stage 2 start (same as Stage 1 end)
-    full_history['stage'].append(2)
-    full_history['iteration'].append(0)
+    # Record Stage 1 as round 0
+    full_history['round'].append(0)
     full_history['determinant'].append(stage1_det)
     full_history['gaussian_entropy'].append(stage1_entropy)
     full_history['gap'].append(stage1_entropy - target_entropy)
 
     if verbose:
-        print(f"\n  STAGE 2: Outer Loop Refinement ({n_outer} rounds, {max_iter_outer} iters each)")
-        print(f"  Effective basis: L={current_basis.shape[1]} vector fields")
-        print(f"  {'Round':>5}  {'Determinant':>14}  {'H(Gaussian)':>12}  {'Gap':>12}")
-        print("  " + "-" * 50)
-        print(f"  {0:>5}  {stage1_det:>14.6e}  {stage1_entropy:>12.6f}  {stage1_entropy - target_entropy:>12.6f}")
+        print(f"  Round 0: det = {stage1_det:.6e}, H = {stage1_entropy:.6f}, gap = {stage1_entropy - target_entropy:.6f}")
 
-    for outer_round in range(1, n_outer + 1):
+    # =========================================================================
+    # STAGE 2: Outer loop with EffectiveTransformation
+    # =========================================================================
+    updated_basis = transformation.get_updated_basis(eval_points)
+    current_basis = updated_basis.copy()
+    current_points = stage1_points.copy()
+
+    pbar2 = tqdm(range(1, n_outer + 1), desc=f"Stage 2 (s={sigma})", disable=not verbose)
+    for outer_round in pbar2:
         eff_transform = EffectiveTransformation(current_basis, current_points)
         eff_minimizer = EffectiveCovarianceMinimizer(eff_transform)
 
@@ -186,28 +143,20 @@ def run_optimization(eval_points, centers, sigma, cfg: scenario_entra, verbose=T
         round_cov = result['final_covariance']
         round_entropy = shannon_entropy_gaussian(round_cov)
 
-        # Update points and basis for next round
         current_points = eff_transform.transform()
         current_basis = eff_transform.get_updated_basis()
 
-        outer_history['round'].append(outer_round)
-        outer_history['determinant'].append(round_det)
-        outer_history['gaussian_entropy'].append(round_entropy)
-
-        # Record in full history
-        full_history['stage'].append(2)
-        full_history['iteration'].append(outer_round)
+        # Record this round
+        full_history['round'].append(outer_round)
         full_history['determinant'].append(round_det)
         full_history['gaussian_entropy'].append(round_entropy)
         full_history['gap'].append(round_entropy - target_entropy)
 
-        if verbose:
-            gap = round_entropy - target_entropy
-            print(f"  {outer_round:>5}  {round_det:>14.6e}  {round_entropy:>12.6f}  {gap:>12.6f}")
+        pbar2.set_postfix(det=f"{round_det:.2e}", gap=f"{round_entropy - target_entropy:.4f}")
 
-    final_det = outer_history['determinant'][-1]
-    final_entropy = outer_history['gaussian_entropy'][-1]
-    final_gap = final_entropy - target_entropy
+    final_det = full_history['determinant'][-1]
+    final_entropy = full_history['gaussian_entropy'][-1]
+    final_gap = full_history['gap'][-1]
 
     if verbose:
         print(f"\n  Final: det = {final_det:.6e}, H(Gaussian) = {final_entropy:.6f}, gap = {final_gap:.6f}")
@@ -218,7 +167,6 @@ def run_optimization(eval_points, centers, sigma, cfg: scenario_entra, verbose=T
         'final_det': final_det,
         'final_entropy': final_entropy,
         'gap': final_gap,
-        'outer_history': outer_history,
         'full_history': full_history,
         'final_points': current_points,
         'stage1_iterations': stage1_iter_count,
@@ -370,14 +318,12 @@ def run_sigma_sweep(cfg: scenario_entra, output_dir=None):
     print("-" * 70)
 
     for sigma in sigma_values:
-        print(f"\n>>> Sigma = {sigma}")
-
         result = run_optimization(
             eval_points.copy(),
             centers,
             sigma,
             cfg,
-            verbose=False
+            verbose=True
         )
 
         results.append(result)
@@ -391,9 +337,6 @@ def run_sigma_sweep(cfg: scenario_entra, output_dir=None):
         if cfg.output.save_csv:
             history_file = os.path.join(output_dir, f'history_sigma_{sigma}_{timestamp}.csv')
             history_df.to_csv(history_file, index=False)
-            print(f"    Final det: {result['final_det']:.6e}, H(Gaussian): {result['final_entropy']:.6f}, Gap: {result['gap']:.6f}")
-        else:
-            print(f"    Final det: {result['final_det']:.6e}, H(Gaussian): {result['final_entropy']:.6f}, Gap: {result['gap']:.6f}")
 
     # Combine all histories
     combined_df = pd.concat(all_histories, ignore_index=True)
