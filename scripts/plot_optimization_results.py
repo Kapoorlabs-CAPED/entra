@@ -142,12 +142,12 @@ def plot_summary(summary_csv, output_file=None):
     """Plot summary bar charts comparing different sigma values."""
     df = pd.read_csv(summary_csv)
 
-    fig, axes = plt.subplots(2, 2, figsize=(12, 10))
+    fig, axes = plt.subplots(1, 3, figsize=(15, 4))
 
     sigmas = df['sigma'].values
     x = np.arange(len(sigmas))
 
-    ax0 = axes[0, 0]
+    ax0 = axes[0]
     colors = ['green' if g < 0.1 else 'orange' if g < 0.5 else 'red' for g in np.abs(df['gap'])]
     bars = ax0.bar(x, df['gap'], color=colors, alpha=0.7, edgecolor='black')
     ax0.axhline(0, color='black', linestyle='--', linewidth=1)
@@ -162,7 +162,7 @@ def plot_summary(summary_csv, output_file=None):
     bars[best_idx].set_edgecolor('blue')
     bars[best_idx].set_linewidth(3)
 
-    ax1 = axes[0, 1]
+    ax1 = axes[1]
     ax1.bar(x, df['det_reduction'], color='steelblue', alpha=0.7, edgecolor='black')
     ax1.set_xticks(x)
     ax1.set_xticklabels(sigmas)
@@ -171,7 +171,7 @@ def plot_summary(summary_csv, output_file=None):
     ax1.set_title('Determinant Reduction (Initial / Final)')
     ax1.grid(True, alpha=0.3, axis='y')
 
-    ax2 = axes[1, 0]
+    ax2 = axes[2]
     target = df['target_entropy'].iloc[0]
     ax2.bar(x, df['final_entropy'], color='coral', alpha=0.7, edgecolor='black')
     ax2.axhline(target, color='green', linestyle='--', linewidth=2, label=f'Target={target:.4f}')
@@ -182,15 +182,6 @@ def plot_summary(summary_csv, output_file=None):
     ax2.set_title('Final Gaussian Entropy')
     ax2.legend()
     ax2.grid(True, alpha=0.3, axis='y')
-
-    ax3 = axes[1, 1]
-    ax3.bar(x, df['stage1_iterations'], color='purple', alpha=0.7, edgecolor='black')
-    ax3.set_xticks(x)
-    ax3.set_xticklabels(sigmas)
-    ax3.set_xlabel('Sigma')
-    ax3.set_ylabel('Iterations')
-    ax3.set_title('Stage 1 Iterations to Converge')
-    ax3.grid(True, alpha=0.3, axis='y')
 
     plt.suptitle('Sigma Sweep Summary', fontsize=14)
     plt.tight_layout()
