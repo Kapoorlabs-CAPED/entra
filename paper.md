@@ -156,18 +156,18 @@ The optimal $\sigma$ minimizes the absolute gap between the final Gaussian entro
 
 **Table 1.** Sigma sweep results for 2D uniform distribution ($20 \times 20$ grid, $H_{\text{uniform}} = 5.889$ nats).
 
-| $\sigma$ | Final Det | $H_{\text{Gaussian}}$ | Gap (nats) | Det Reduction |
-|----------|-----------|----------------------|------------|---------------|
-| 3.0 | $9.92 \times 10^2$ | 6.288 | +0.399 | 1.12$\times$ |
-| 3.2 | $9.84 \times 10^2$ | 6.284 | +0.395 | 1.13$\times$ |
-| 3.4 | $9.58 \times 10^2$ | 6.270 | +0.381 | 1.16$\times$ |
-| 3.6 | $6.90 \times 10^2$ | 6.106 | +0.217 | 1.61$\times$ |
-| 3.8 | $5.31 \times 10^2$ | 5.976 | +0.087 | 2.09$\times$ |
-| **4.0** | $4.32 \times 10^2$ | **5.872** | **-0.017** | 2.57$\times$ |
-| 4.2 | $3.65 \times 10^2$ | 5.788 | -0.100 | 3.04$\times$ |
-| 4.4 | $4.21 \times 10^2$ | 5.859 | -0.030 | 2.64$\times$ |
-| 4.6 | $3.81 \times 10^2$ | 5.810 | -0.079 | 2.91$\times$ |
-| 4.8 | $3.73 \times 10^2$ | 5.799 | -0.090 | 2.98$\times$ |
+| $\sigma$ | Final Det | $H_{\text{Gaussian}}$ | Gap (nats) |
+|----------|-----------|----------------------|------------|
+| 3.0 | $9.92 \times 10^2$ | 6.288 | +0.399 |
+| 3.2 | $9.84 \times 10^2$ | 6.284 | +0.395 |
+| 3.4 | $9.58 \times 10^2$ | 6.270 | +0.381 |
+| 3.6 | $6.90 \times 10^2$ | 6.106 | +0.217 |
+| 3.8 | $5.31 \times 10^2$ | 5.976 | +0.087 |
+| **4.0** | $4.32 \times 10^2$ | **5.872** | **-0.017** |
+| 4.2 | $3.65 \times 10^2$ | 5.788 | -0.100 |
+| 4.4 | $4.21 \times 10^2$ | 5.859 | -0.030 |
+| 4.6 | $3.81 \times 10^2$ | 5.810 | -0.079 |
+| 4.8 | $3.73 \times 10^2$ | 5.799 | -0.090 |
 
 The optimal $\sigma = 4.0$ achieves a gap of only $-0.017$ nats, confirming successful entropy-conserving Gaussianization. Smaller $\sigma$ values ($< 3.8$) produce basis functions too localized to effectively reduce the covariance, resulting in positive gaps (under-compression). Larger $\sigma$ values ($> 4.0$) over-compress the distribution, yielding negative gaps.
 
