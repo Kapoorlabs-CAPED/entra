@@ -138,6 +138,193 @@ When applied to a scalar function φ(x), this operator produces a D×D matrix wh
     └─────────────────────────────────────────┘
 ```
 
+## Covariance Optimization Algorithm
+
+The optimization proceeds in two stages to transform any distribution towards Gaussian form while conserving entropy.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    COVARIANCE OPTIMIZATION PIPELINE                          │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+    ┌─────────────────────────────────────────┐
+    │  INPUT                                  │
+    │  • Points: (J, D) array                 │
+    │  • σ: RBF width parameter               │
+    │  • Target: H(uniform) = ln(V)           │
+    └────────────────────┬────────────────────┘
+                         │
+                         ▼
+    ╔═════════════════════════════════════════╗
+    ║  STAGE 1: TENSOR BASIS OPTIMIZATION     ║
+    ║  (L × D parameters)                     ║
+    ╠═════════════════════════════════════════╣
+    ║                                         ║
+    ║  1. Build tensor basis Φ (J, L, D, D)   ║
+    ║                                         ║
+    ║  2. Define transformation:              ║
+    ║     y' = y + Σ_l Φ_l(y) · c_l           ║
+    ║     where c_l ∈ ℝ^D (L×D params)        ║
+    ║                                         ║
+    ║  3. Levenberg-Marquardt optimization:   ║
+    ║     minimize det(Cov(y'))               ║
+    ║                                         ║
+    ║  4. Collapse to effective basis:        ║
+    ║     V_l = Φ_l · c_l  →  (J, L, D)       ║
+    ║                                         ║
+    ╚════════════════════┬════════════════════╝
+                         │
+                         ▼
+    ╔═════════════════════════════════════════╗
+    ║  STAGE 2: OUTER LOOP REFINEMENT         ║
+    ║  (L parameters per round)               ║
+    ╠═════════════════════════════════════════╣
+    ║                                         ║
+    ║  For each outer round (typically 5):    ║
+    ║                                         ║
+    ║  1. Define scalar-weighted transform:   ║
+    ║     y' = y + Σ_l α_l V_l                ║
+    ║     where α_l ∈ ℝ (L scalar params)     ║
+    ║                                         ║
+    ║  2. Optimize: minimize det(Cov(y'))     ║
+    ║                                         ║
+    ║  3. Update basis: V_l ← α_l V_l         ║
+    ║                                         ║
+    ║  4. Transform points: y ← y'            ║
+    ║                                         ║
+    ║  5. Repeat with updated points & basis  ║
+    ║                                         ║
+    ╚════════════════════┬════════════════════╝
+                         │
+                         ▼
+    ┌─────────────────────────────────────────┐
+    │  OUTPUT                                 │
+    │  • Transformed points (J, D)            │
+    │  • H(Gaussian) ≈ H(uniform) = Target    │
+    │  • Distribution → Gaussian form         │
+    └─────────────────────────────────────────┘
+
+    ┌─────────────────────────────────────────┐
+    │  CONVERGENCE CRITERION                  │
+    │                                         │
+    │  Gap = H(Gaussian) - H(uniform) → 0     │
+    │                                         │
+    │  When gap ≈ 0, the distribution has     │
+    │  been successfully Gaussianized while   │
+    │  preserving the original entropy.       │
+    └─────────────────────────────────────────┘
+```
+
+### Why Two Stages?
+
+**Stage 1** uses `L × D` parameters (matrix-valued coefficients) for maximum flexibility in finding the initial transformation direction. This explores a larger parameter space but is computationally expensive.
+
+**Stage 2** uses only `L` parameters (scalar coefficients) per round. Each round operates on the transformed points from the previous round, allowing incremental refinements that compound across rounds. The effective basis adapts at each round, capturing increasingly fine-grained displacement patterns.
+
+## Full Optimization Example
+
+```python
+import numpy as np
+from entra import (
+    VectorSampler, TensorBasis, Transformation,
+    CovarianceMinimizer, EffectiveTransformation,
+    EffectiveCovarianceMinimizer,
+    shannon_entropy_gaussian, shannon_entropy_uniform
+)
+
+# Generate 2D uniform distribution (20×20 = 400 points)
+sampler = VectorSampler(center=[0.0, 0.0], delta_x=1, num_points_per_dim=20)
+points = sampler.sample()
+
+# Create centers along axes
+centers = np.array([[i, 0], [-i, 0], [0, i], [0, -i]]
+                   for i in range(10)).reshape(-1, 2)
+
+# Target entropy
+target_H = shannon_entropy_uniform(points)
+print(f"Target H(uniform): {target_H:.4f} nats")
+
+# ============================================================
+# STAGE 1: Tensor Basis Optimization
+# ============================================================
+sigma = 4.0  # Optimized RBF width
+basis = TensorBasis(centers, sigma=sigma)
+transformation = Transformation(basis)
+minimizer = CovarianceMinimizer(transformation, points)
+
+# Get initial coefficients and optimize
+x = transformation.get_coefficients_flat().copy()
+n_params = len(x)
+lam, eps, tol = 1.0, 1e-7, 1e-12
+
+for iteration in range(1000):
+    r = minimizer.residuals_for_lm(x)
+
+    # Numerical Jacobian
+    J_mat = np.zeros((len(r), n_params))
+    for i in range(n_params):
+        x_plus = x.copy()
+        x_plus[i] += eps
+        J_mat[:, i] = (minimizer.residuals_for_lm(x_plus) - r) / eps
+
+    # LM update
+    JTJ = J_mat.T @ J_mat
+    JTr = J_mat.T @ r
+    delta = np.linalg.solve(JTJ + lam * np.eye(n_params), -JTr)
+
+    x_new = x + delta
+    if minimizer.objective_logdet(x_new) < minimizer.objective_logdet(x):
+        improvement = abs(minimizer.objective_logdet(x) - minimizer.objective_logdet(x_new))
+        x = x_new
+        lam *= 0.1
+        if improvement < tol:
+            break
+    else:
+        lam *= 10.0
+
+transformation.set_coefficients_flat(x)
+stage1_points = transformation.transform(points)
+
+cov = np.cov(stage1_points, rowvar=False)
+print(f"After Stage 1: H(Gaussian) = {shannon_entropy_gaussian(cov):.4f}")
+
+# ============================================================
+# STAGE 2: Outer Loop Refinement (5 rounds)
+# ============================================================
+current_basis = transformation.get_updated_basis(points)
+current_points = stage1_points.copy()
+
+for round_num in range(1, 6):
+    eff_transform = EffectiveTransformation(current_basis, current_points)
+    eff_minimizer = EffectiveCovarianceMinimizer(eff_transform)
+
+    result = eff_minimizer.optimize(max_iterations=1000, tolerance=1e-10)
+
+    current_points = eff_transform.transform()
+    current_basis = eff_transform.get_updated_basis()
+
+    cov = np.cov(current_points, rowvar=False)
+    H = shannon_entropy_gaussian(cov)
+    gap = H - target_H
+    print(f"Round {round_num}: H(Gaussian) = {H:.4f}, Gap = {gap:+.4f}")
+
+print(f"\nFinal gap: {gap:+.4f} nats (target: 0)")
+```
+
+### Example Results
+
+**Initial uniform distribution (before transformation):**
+
+![Initial Distribution](results/round_00_initial.png)
+
+**Final Gaussian distribution (after 5 outer loop rounds):**
+
+![Final Distribution](results/round_06_outer5.png)
+
+**Optimization history showing convergence:**
+
+![Optimization History](results/csv_optimization_history.png)
+
 ## Mathematical Details
 
 For the complete mathematical formulation including:
@@ -148,40 +335,6 @@ For the complete mathematical formulation including:
 - Discrete divergence computation
 
 See **[docs/equations.rst](docs/equations.rst)**
-
-## Quick Start
-
-```python
-import numpy as np
-from entra import VectorSampler, TensorBasis, verify_tensor_basis_divergence_free
-
-# Step 1: Create evaluation grid (10×10 = 100 points)
-sampler = VectorSampler(
-    center=[0.0, 0.0],
-    delta_x=0.1,
-    num_points_per_dim=10,
-    distribution="uniform"
-)
-eval_points = sampler.sample()  # (100, 2)
-
-# Step 2: Define centers
-centers = np.array([[0.0, 0.0]])  # L=1 center
-
-# Step 3 & 4: Create tensor basis and evaluate
-sigma = 0.7 * 0.1  # 0.7 × delta_x
-basis = TensorBasis(centers, sigma=sigma)
-Phi = basis.evaluate(eval_points)  # (100, 1, 2, 2)
-
-# Step 5: Extract columns as vector fields
-V0 = Phi[:, 0, :, 0]  # Column 0: (100, 2)
-V1 = Phi[:, 0, :, 1]  # Column 1: (100, 2)
-
-# Step 6: Verify divergence-free
-all_free, rel_divs = verify_tensor_basis_divergence_free(
-    Phi, dx=0.1, grid_shape=(10, 10)
-)
-print(f"All columns divergence-free: {all_free}")
-```
 
 ## API Reference
 
