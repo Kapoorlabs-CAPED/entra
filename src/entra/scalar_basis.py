@@ -15,9 +15,9 @@ class ScalarBasis:
     Creates L smooth scalar basis functions (Gaussian RBFs) from L center vectors.
 
     Each basis function is defined as:
-        φ_l(x) = exp(-Σ_d (x_d - c_l,d)² / (2σ_d²))
+        φ_l(x) = exp(-Σ_d (x_d - c_l,d)² / (2s_d²))
 
-    where c_l is the l-th center vector and σ_d = sigma_factor * Δx_d.
+    where c_l is the l-th center vector and s_d = sigma_factor * Δx_d.
 
     Parameters
     ----------
@@ -26,7 +26,7 @@ class ScalarBasis:
     delta_x : float, list, or np.ndarray
         Grid spacing per dimension. Scalar applies to all dimensions.
     sigma_factor : float, optional
-        Multiplier for delta_x to compute σ. Default is 0.7.
+        Multiplier for delta_x to compute s. Default is 0.7.
 
     Attributes
     ----------
@@ -41,9 +41,9 @@ class ScalarBasis:
     delta_x : np.ndarray
         Spacing per dimension.
     sigma : np.ndarray
-        σ values per dimension.
+        s values per dimension.
     sigma_sq : np.ndarray
-        σ² values per dimension.
+        s² values per dimension.
     """
 
     def __init__(

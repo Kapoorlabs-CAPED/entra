@@ -29,7 +29,7 @@ class Transformation:
     The transformation is:
         y' = y + Σ_l Φ_l(y) @ c_l
 
-    where Φ_l(y) is the D×D tensor basis matrix for center l, and c_l is a
+    where Φ_l(y) is the DxD tensor basis matrix for center l, and c_l is a
     D-dimensional coefficient vector. This is equivalent to:
         y' = y + Σ_l Σ_d c_{l,d} * V^l_d(y)
 

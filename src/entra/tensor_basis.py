@@ -2,7 +2,7 @@
 Tensor Basis Function Module
 
 Applies the operator Ô = -I∇² + ∇∇ᵀ to Gaussian RBF basis functions,
-producing D×D matrix-valued basis functions.
+producing DxD matrix-valued basis functions.
 
 L centers, N evaluation points, D dimensions → output (N, L, D, D)
 """
@@ -14,19 +14,19 @@ class TensorBasis:
     """
     Applies operator Ô = -I∇² + ∇∇ᵀ to Gaussian RBFs.
 
-    For each basis function φ_l(x) = exp(-||x - x_l||²/(2σ²)), produces:
+    For each basis function φ_l(x) = exp(-||x - x_l||²/(2s²)), produces:
 
-    Φ_l(x) = {(D-1)/σ² - ||x-x_l||²/σ⁴} I_D exp(-||x-x_l||²/(2σ²))
-           + {(x-x_l)(x-x_l)ᵀ / σ⁴} exp(-||x-x_l||²/(2σ²))
+    Φ_l(x) = {(D-1)/s² - ||x-x_l||²/s⁴} I_D exp(-||x-x_l||²/(2s²))
+           + {(x-x_l)(x-x_l)ᵀ / s⁴} exp(-||x-x_l||²/(2s²))
 
-    where D is the dimension and I_D is the D×D identity matrix.
+    where D is the dimension and I_D is the DxD identity matrix.
 
     Parameters
     ----------
     centers : np.ndarray
         Array of shape (L, D) containing L center vectors of dimension D.
     sigma : float
-        Isotropic width parameter σ for the Gaussian RBFs.
+        Isotropic width parameter s for the Gaussian RBFs.
 
     Attributes
     ----------
@@ -80,10 +80,10 @@ class TensorBasis:
         # Squared distances: ||x - x_l||²
         sq_dist = np.sum(diff**2, axis=2)  # (N, L)
 
-        # Gaussian values: exp(-||x - x_l||²/(2σ²))
+        # Gaussian values: exp(-||x - x_l||²/(2s²))
         phi = np.exp(-sq_dist / (2 * self.sigma_sq))  # (N, L)
 
-        # Coefficient for identity term: (D-1)/σ² - ||x-x_l||²/σ⁴
+        # Coefficient for identity term: (D-1)/s² - ||x-x_l||²/s⁴
         coeff = (D - 1) / self.sigma_sq - sq_dist / self.sigma_4  # (N, L)
 
         # Identity term: coeff * I * phi
@@ -95,7 +95,7 @@ class TensorBasis:
             * phi[:, :, np.newaxis, np.newaxis]
         )
 
-        # Outer product term: (x-x_l)(x-x_l)ᵀ / σ⁴ * phi
+        # Outer product term: (x-x_l)(x-x_l)ᵀ / s⁴ * phi
         # diff: (N, L, D) -> outer product for each (n, l): (N, L, D, D)
         outer = (
             diff[:, :, :, np.newaxis] * diff[:, :, np.newaxis, :]
