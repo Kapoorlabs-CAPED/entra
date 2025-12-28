@@ -173,9 +173,9 @@ The optimal $\sigma = 4.0$ achieves a gap of only $-0.017$ nats, confirming succ
 
 Figure 1 shows the optimization progress across rounds for different $\sigma$ values. The determinant decreases monotonically while the Gaussian entropy approaches the target. Figure 2 summarizes the sigma sweep, highlighting that $\sigma = 4.0$ (blue border) achieves the smallest absolute gap.
 
-![Optimization history showing determinant reduction and entropy convergence across rounds for different sigma values.](figures/optimization_history.png)
+![Optimization history showing determinant reduction and entropy convergence across rounds for different sigma values.](results/optimization_history.png)
 
-![Sigma sweep summary comparing final gap, determinant reduction, and Gaussian entropy across sigma values. The optimal sigma (blue border) minimizes the absolute gap to target entropy.](figures/sigma_sweep_summary.png)
+![Sigma sweep summary comparing final gap, determinant reduction, and Gaussian entropy across sigma values. The optimal sigma (blue border) minimizes the absolute gap to target entropy.](results/sigma_sweep_summary.png)
 
 # Validation
 
